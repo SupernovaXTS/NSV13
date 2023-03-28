@@ -1,20 +1,23 @@
+/obj/item/storage/box/syndie_kit
+	name = "box"
+	desc = "A sleek, sturdy box."
+	icon_state = "syndiebox"
+	illustration = "writing_syndie"
 
-/obj/item/storage/box/syndicate
-
-/obj/item/storage/box/syndicate/bundle_A/PopulateContents()
+/obj/item/storage/box/syndie_kit/bundle_A/PopulateContents()
 	switch (pickweight(list("recon" = 2, "bloodyspai" = 3, "stealth" = 2, "screwed" = 2, "sabotage" = 3, "guns" = 2, "murder" = 2, "implant" = 1, "hacker" = 3, "sniper" = 1, "metaops" = 1)))
-		if("recon") 
+		if("recon")
 			new /obj/item/clothing/glasses/thermal/xray(src) // ~8 tc?
 			new /obj/item/storage/briefcase/launchpad(src) //6 tc
-			new	/obj/item/twohanded/binoculars(src) // 2 tc?
+			new	/obj/item/binoculars(src) // 2 tc?
 			new /obj/item/encryptionkey/syndicate(src) // 2 tc
 			new /obj/item/storage/box/syndie_kit/space(src) //4 tc
-			new /obj/item/grenade/syndieminibomb/concussion/frag(src) // ~2 tc each?
-			new /obj/item/grenade/syndieminibomb/concussion/frag(src) 
+			new /obj/item/grenade/frag(src) // ~2 tc each?
+			new /obj/item/grenade/frag(src)
 			new /obj/item/flashlight/emp(src)
 			new /obj/item/book/granter/martial/karate(src)
 
-		if("bloodyspai") 
+		if("bloodyspai")
 			new /obj/item/clothing/under/chameleon(src) // 2 tc since it's not the full set
 			new /obj/item/clothing/mask/chameleon(src) // Goes with above
 			new /obj/item/card/id/syndicate(src) // 2 tc
@@ -28,7 +31,7 @@
 			new /obj/item/flashlight/emp(src) // 2 tc
 			new /obj/item/chameleon(src) // 7 tc
 
-		if("stealth") 
+		if("stealth")
 			new /obj/item/gun/energy/kinetic_accelerator/crossbow(src)
 			new /obj/item/pen/sleepy(src)
 			new /obj/item/healthanalyzer/rad_laser(src)
@@ -38,7 +41,7 @@
 			new /obj/item/flashlight/emp(src)
 			new /obj/item/jammer(src)
 
-		if("guns") 
+		if("guns")
 			new /obj/item/gun/ballistic/revolver(src)
 			new /obj/item/ammo_box/a357(src)
 			new /obj/item/ammo_box/a357(src)
@@ -48,7 +51,7 @@
 			new /obj/item/clothing/mask/gas/clown_hat(src)
 			new /obj/item/clothing/under/suit/black_really(src)
 
-		if("screwed") 
+		if("screwed")
 			new /obj/item/sbeacondrop/bomb(src)
 			new /obj/item/grenade/syndieminibomb(src)
 			new /obj/item/sbeacondrop/powersink(src)
@@ -57,7 +60,7 @@
 			new /obj/item/encryptionkey/syndicate(src)
 			new /obj/item/pen/edagger(src)
 
-		if("murder") 
+		if("murder")
 			new /obj/item/melee/transforming/energy/sword/saber(src)
 			new /obj/item/clothing/glasses/thermal/syndi(src)
 			new /obj/item/card/emag(src)
@@ -65,7 +68,7 @@
 			new /obj/item/encryptionkey/syndicate(src)
 			new /obj/item/grenade/syndieminibomb(src)
 
-		if("implant") 
+		if("implant")
 			new /obj/item/implanter/freedom(src)
 			new /obj/item/implanter/uplink/precharged(src)
 			new /obj/item/implanter/emp(src)
@@ -73,7 +76,7 @@
 			new /obj/item/implanter/explosive(src)
 			new /obj/item/implanter/storage(src)
 
-		if("hacker") 
+		if("hacker")
 			new /obj/item/aiModule/syndicate(src)
 			new /obj/item/card/emag(src)
 			new /obj/item/encryptionkey/binary(src)
@@ -85,7 +88,7 @@
 			new /obj/item/card/id/syndicate(src)
 			new /obj/item/pen/edagger(src)
 
-		if("lordsingulo") 
+		if("lordsingulo")
 			new /obj/item/sbeacondrop(src)
 			new /obj/item/clothing/suit/space/syndicate/black/red(src)
 			new /obj/item/clothing/head/helmet/space/syndicate/black/red(src)
@@ -93,7 +96,7 @@
 			new /obj/item/storage/toolbox/syndicate(src)
 			new /obj/item/pen/edagger(src)
 
-		if("sabotage") 
+		if("sabotage")
 			new /obj/item/grenade/plastic/c4 (src)
 			new /obj/item/grenade/plastic/c4 (src)
 			new /obj/item/doorCharge(src)
@@ -113,7 +116,7 @@
 			new /obj/item/clothing/mask/gas/clown_hat(src)
 			new /obj/item/clothing/under/suit/black_really(src)
 
-		if("metaops") 
+		if("metaops")
 			new /obj/item/clothing/suit/space/hardsuit/syndi(src) // 8 tc
 			new /obj/item/gun/ballistic/shotgun/bulldog/unrestricted(src) // 8 tc
 			new /obj/item/implanter/explosive(src) // 2 tc
@@ -122,10 +125,10 @@
 			new /obj/item/grenade/plastic/c4 (src) // 1 tc
 			new /obj/item/grenade/plastic/c4 (src) // 1 tc
 			new /obj/item/card/emag(src) // 6 tc
-			
-/obj/item/storage/box/syndicate/bundle_B/PopulateContents()
+
+/obj/item/storage/box/syndie_kit/bundle_B/PopulateContents()
 	switch (pickweight(list( "bond" = 2, "ninja" = 1, "darklord" = 1, "white_whale_holy_grail" = 2, "mad_scientist" = 2, "bee" = 2, "mr_freeze" = 2)))
-		if("bond") 
+		if("bond")
 			new /obj/item/gun/ballistic/automatic/pistol(src)
 			new /obj/item/suppressor(src)
 			new /obj/item/ammo_box/magazine/m10mm(src)
@@ -133,11 +136,11 @@
 			new /obj/item/ammo_box/magazine/m10mm/hp(src)
 			new /obj/item/clothing/under/chameleon(src)
 			new /obj/item/card/id/syndicate(src)
-			new /obj/item/reagent_containers/hypospray/medipen/pumpup(src)
+			new /obj/item/reagent_containers/hypospray/medipen/stimulants(src)
 			new /obj/item/reagent_containers/glass/rag(src)
 			new /obj/item/encryptionkey/syndicate(src)
-			
-		if("ninja") 
+
+		if("ninja")
 			new /obj/item/katana(src) // Unique , hard to tell how much tc this is worth. 8 tc?
 			new /obj/item/implanter/adrenalin(src) // 8 tc
 			for(var/i in 1 to 6)
@@ -146,14 +149,14 @@
 			new /obj/item/card/id/syndicate(src) // 2 tc
 			new /obj/item/chameleon(src) // 7 tc
 
-		if("darklord") 
-			new /obj/item/twohanded/dualsaber(src)
+		if("darklord")
+			new /obj/item/dualsaber(src)
 			new /obj/item/dnainjector/telemut/darkbundle(src)
 			new /obj/item/clothing/suit/hooded/chaplain_hoodie(src)
 			new /obj/item/card/id/syndicate(src)
 			new /obj/item/clothing/shoes/chameleon/noslip(src) //because slipping while being a dark lord sucks
 			new /obj/item/book/granter/spell/summonitem(src)
-			
+
 		if("white_whale_holy_grail") //Unique items that don't appear anywhere else
 			new /obj/item/pneumatic_cannon/speargun(src)
 			new /obj/item/storage/backpack/magspear_quiver(src)
@@ -178,8 +181,8 @@
 			new /obj/item/pen/edagger(src)
 			new /obj/item/gun/energy/wormhole_projector(src) //mooorttyyyy
 			new /obj/item/gun/energy/decloner/unrestricted(src)
-			
-		if("bee") 
+
+		if("bee")
 			new /obj/item/paper/fluff/bee_objectives(src) // 0 tc (motivation)
 			new /obj/item/clothing/suit/hooded/bee_costume/syndie(src) // 0 tc
 			new /obj/item/clothing/mask/rat/bee(src) // 0 tc
@@ -187,46 +190,42 @@
 			new /obj/item/storage/box/syndie_kit/bee_grenades(src) // 15 tc
 			new /obj/item/reagent_containers/glass/bottle/beesease(src) // 10 tc?
 			new /obj/item/gun/chem/bee(src) //priceless
-			
+
 		if("mr_freeze")
 			new /obj/item/clothing/glasses/cold(src)
 			new /obj/item/clothing/gloves/color/black(src)
 			new /obj/item/clothing/mask/chameleon(src)
 			new /obj/item/clothing/suit/hooded/wintercoat(src)
-			new /obj/item/clothing/shoes/winterboots(src)
+			new /obj/item/clothing/shoes/winterboots/noslip(src)
 			new /obj/item/grenade/gluon(src)
 			new /obj/item/grenade/gluon(src)
 			new /obj/item/grenade/gluon(src)
 			new /obj/item/grenade/gluon(src)
 			new /obj/item/dnainjector/geladikinesis(src)
 			new /obj/item/dnainjector/cryokinesis(src)
-			new /obj/item/gun/energy/temperature/security(src)
+			new /obj/item/gun/energy/temperature/pin(src)
 			new /obj/item/melee/transforming/energy/sword/saber/blue(src) //see see it fits the theme bc its blue and ice is blue
 
-/obj/item/storage/box/syndicate/contract_kit
+/obj/item/storage/box/syndie_kit/contract_kit
 	name = "Contract Kit"
 	desc = "Supplied to Syndicate contractors."
-	icon_state = "syndiebox"
-	illustration = "writing_syndie"
 
-/obj/item/storage/box/syndicate/contractor_loadout
+/obj/item/storage/box/syndie_kit/contractor_loadout
 	name = "Standard Loadout"
 	desc = "Supplied to Syndicate contractors, providing their specialised space suit and chameleon uniform."
-	icon_state = "syndiebox"
-	illustration = "writing_syndie"
 
 /obj/item/paper/contractor_guide
 	name = "Contractor Guide"
 
-/obj/item/paper/contractor_guide/Initialize()
-	info = {"<p>Welcome agent, congratulations on your new position as contractor. On top of your already assigned objectives, 
+/obj/item/paper/contractor_guide/Initialize(mapload)
+	info = {"<p>Welcome agent, congratulations on your new position as contractor. On top of your already assigned objectives,
 			this kit will provide you contracts to take on for TC payments.</p>
 
-			<p>Provided within, we give your specialist contractor space suit. It's even more compact, being able to fit into a pocket, and faster than the 
-			Syndicate space suit available to you on the uplink. We also provide your chameleon jumpsuit and mask, both of which can be changed 
+			<p>Provided within, we give your specialist contractor space suit. It's even more compact, being able to fit into a pocket, and faster than the
+			Syndicate space suit available to you on the uplink. We also provide your chameleon jumpsuit and mask, both of which can be changed
 			to any form you need for the moment. The cigarettes are a special blend - it'll heal your injuries slowly overtime.</p>
 
-			<p>Your standard issue contractor baton hits harder than the ones you might be used to, and likely be your go to weapon for kidnapping your 
+			<p>Your standard issue contractor baton hits harder than the ones you might be used to, and likely be your go to weapon for kidnapping your
 			targets. The three additional items have been randomly selected from what we had available. We hope they're useful to you for your mission.</p>
 
 			<p>The contractor hub, available at the top right of the uplink, will provide you unique items and abilities. These are bought using Contractor Rep,
@@ -236,13 +235,13 @@
 			<ol>
 				<li>Open the Syndicate Contract Uplink program.</li>
 				<li>Here, you can accept a contract, and redeem your TC payments from completed contracts.</li>
-				<li>The payment number shown in brackets is the bonus you'll recieve when bringing your target <b>alive</b>. You recieve the 
+				<li>The payment number shown in brackets is the bonus you'll receive when bringing your target <b>alive</b>. You receive the
 				other number regardless of if they were alive or dead.</li>
 				<li>Contracts are completed by bringing the target to designated dropoff, calling for extraction, and putting them
 				inside the pod.</li>
 			</ol>
 
-			<p>Be careful when accepting a contract. While you'll be able to see the location of the dropoff point, cancelling will make it 
+			<p>Be careful when accepting a contract. While you'll be able to see the location of the dropoff point, cancelling will make it
 			unavailable to take on again.</p>
 			<p>The tablet can also be recharged at any cell charger.</p>
 			<h3>Extracting</h3>
@@ -253,15 +252,15 @@
 				<li>Grab your target, and drag them into the pod.</li>
 			</ol>
 			<h3>Ransoms</h3>
-			<p>We need your target for our own reasons, but we ransom them back to your mission area once their use is served. They will return back 
-			from where you sent them off from in several minutes time. Don't worry, we give you a cut of what we get paid. We pay this into whatever 
+			<p>We need your target for our own reasons, but we ransom them back to your mission area once their use is served. They will return back
+			from where you sent them off from in several minutes time. Don't worry, we give you a cut of what we get paid. We pay this into whatever
 			ID card you have equipped, on top of the TC payment we give.</p>
-			
+
 			<p>Good luck agent. You can burn this document with the supplied lighter.</p>"}
 
 	return ..()
 
-/obj/item/storage/box/syndicate/contractor_loadout/PopulateContents()
+/obj/item/storage/box/syndie_kit/contractor_loadout/PopulateContents()
 	new /obj/item/clothing/head/helmet/space/syndicate/contract(src)
 	new /obj/item/clothing/suit/space/syndicate/contract(src)
 	new /obj/item/clothing/under/chameleon(src)
@@ -269,31 +268,30 @@
 	new /obj/item/card/id/syndicate(src)
 	new /obj/item/storage/fancy/cigarettes/cigpack_syndicate(src)
 	new /obj/item/lighter(src)
+	new /obj/item/jammer(src)
 
-/obj/item/storage/box/syndicate/contract_kit/PopulateContents()
+/obj/item/storage/box/syndie_kit/contract_kit/PopulateContents()
 	new /obj/item/modular_computer/tablet/syndicate_contract_uplink/preset/uplink(src)
-	new /obj/item/storage/box/syndicate/contractor_loadout(src)
+	new /obj/item/storage/box/syndie_kit/contractor_loadout(src)
 	new /obj/item/melee/classic_baton/contractor_baton(src)
 
 	// All about 4 TC or less - some nukeops only items, but fit nicely to the theme.
 	var/list/item_list = list(
 		/obj/item/storage/backpack/duffelbag/syndie/x4,
 		/obj/item/storage/box/syndie_kit/throwing_weapons,
-		/obj/item/pen/edagger,
 		/obj/item/pen/sleepy,
 		/obj/item/storage/box/syndie_kit/emp,
 		/obj/item/clothing/shoes/chameleon/noslip,
 		/obj/item/storage/firstaid/tactical,
-		/obj/item/encryptionkey/binary,
 		/obj/item/clothing/glasses/thermal/syndi,
-		/obj/item/slimepotion/slime/sentience/nuclear,
 		/obj/item/storage/box/syndie_kit/imp_radio,
 		/obj/item/clothing/gloves/krav_maga/combatglovesplus,
 		/obj/item/gun/ballistic/automatic/c20r/toy/unrestricted/riot,
-		/obj/item/reagent_containers/hypospray/medipen/pumpup,
+		/obj/item/reagent_containers/hypospray/medipen/stimulants,
 		/obj/item/compressionkit,
-		/obj/item/book/granter/martial/karate,
-		/obj/item/storage/box/syndie_kit/imp_freedom
+		/obj/item/storage/box/syndie_kit/imp_freedom,
+		/obj/item/storage/box/syndie_kit/chameleon,
+		/obj/item/healthanalyzer/rad_laser
 	)
 
 	var/obj/item1 = pick_n_take(item_list)
@@ -307,12 +305,6 @@
 
 	// Paper guide
 	new /obj/item/paper/contractor_guide(src)
-
-/obj/item/storage/box/syndie_kit
-	name = "box"
-	desc = "A sleek, sturdy box."
-	icon_state = "syndiebox"
-	illustration = "writing_syndie"
 
 /obj/item/storage/box/syndie_kit/origami_bundle
 	name = "origami kit"
@@ -393,7 +385,7 @@
 	if(prob(50))
 		new /obj/item/clothing/suit/space/syndicate/black/red(src) // Black and red is so in right now
 		new /obj/item/clothing/head/helmet/space/syndicate/black/red(src)
-		
+
 	else
 		new /obj/item/clothing/head/helmet/space/syndicate(src)
 		new /obj/item/clothing/suit/space/syndicate(src)
@@ -468,7 +460,7 @@
 	new /obj/item/clothing/glasses/chameleon(src)
 	new /obj/item/clothing/head/chameleon(src)
 	new /obj/item/clothing/mask/chameleon(src)
-	new /obj/item/clothing/neck/cloak/chameleon(src)
+	new /obj/item/clothing/neck/chameleon(src)
 	new /obj/item/storage/backpack/chameleon(src)
 	new /obj/item/radio/headset/chameleon(src)
 	new /obj/item/stamp/chameleon(src)
@@ -488,7 +480,7 @@
 	new /obj/item/clothing/glasses/chameleon(src)
 	new /obj/item/clothing/head/chameleon/envirohelm(src)
 	new /obj/item/clothing/mask/chameleon(src)
-	new /obj/item/clothing/neck/cloak/chameleon(src)
+	new /obj/item/clothing/neck/chameleon(src)
 	new /obj/item/storage/backpack/chameleon(src)
 	new /obj/item/radio/headset/chameleon(src)
 	new /obj/item/stamp/chameleon(src)
@@ -547,6 +539,7 @@
 	new /obj/item/radio/headset/chameleon/broken(src)
 	new /obj/item/stamp/chameleon/broken(src)
 	new /obj/item/pda/chameleon/broken(src)
+	new /obj/item/card/id/syndicate/broken(src)
 	// No chameleon laser, they can't randomise for //REASONS//
 
 /obj/item/storage/box/syndie_kit/bee_grenades
@@ -565,3 +558,58 @@
 	new /obj/item/storage/belt/soulstone/full/purified(src)
 	new /obj/item/sbeacondrop/constructshell(src)
 	new /obj/item/sbeacondrop/constructshell(src)
+
+/obj/item/storage/box/syndie_kit/mimesabrekit
+	name = "Baguette blade bundle"
+	desc = "Provides you with a hardly noticable blade hidden inside a baguette disguise."
+
+/obj/item/storage/box/syndie_kit/mimesabrekit/PopulateContents()
+	new /obj/item/storage/belt/sabre/mime(src)
+
+/obj/item/storage/box/syndie_kit/imp_deathrattle
+	name = "deathrattle implant box"
+	desc = "Contains eight linked deathrattle implants."
+
+/obj/item/storage/box/syndie_kit/imp_deathrattle/PopulateContents()
+	new /obj/item/implanter(src)
+
+	var/datum/deathrattle_group/group = new
+
+	var/implants = list()
+	for(var/j in 1 to 8)
+		var/obj/item/implantcase/deathrattle/case = new (src)
+		implants += case.imp
+
+	for(var/i in implants)
+		group.register(i)
+	desc += " The implants are registered to the \"[group.name]\" group."
+
+
+/obj/item/storage/box/syndie_kit/toy_box
+	name = "Box of DonkCo. toys"
+	desc = "filled with safe toys that have passed Nanotrasen saftey assurance, but contained in a suspicious red box \"for no reason.\""
+
+/obj/item/storage/box/syndie_kit/toy_box/PopulateContents()
+	new /obj/item/toy/spinningtoy(src)
+	new /obj/item/toy/talking/AI(src)
+	new /obj/item/toy/talking/codex_gigas(src)
+	new /obj/item/toy/eldrich_book(src)
+	new /obj/item/clothing/head/syndicatefake(src)
+	new /obj/item/clothing/suit/syndicatefake(src)
+	new /obj/item/card/emagfake(src)
+	new /obj/item/hot_potato/harmless/toy(src)
+	new /obj/item/toy/batong(src)
+	new /obj/item/toy/clockwork_watch(src)
+	for(var/i in 1 to 2)
+		new /obj/item/toy/cog(src)
+	new /obj/item/restraints/handcuffs/fake(src)
+	new /obj/item/toy/windupToolbox(src)
+	new /obj/item/toy/toy_dagger(src)
+	new /obj/item/toy/sword(src)
+	new /obj/item/dualsaber/toy(src)
+	new /obj/item/toy/gun(src)
+	new /obj/item/toy/foamblade(src)
+	new /obj/item/toy/redbutton(src)
+	new /obj/item/disk/nuclear/fake/obvious
+	for(var/i in 1 to 4)
+		new /obj/item/toy/reality_pierce(src)

@@ -7,6 +7,11 @@
   *
  **/
 
+//Init the debugger datum first so we can debug Master
+//You might wonder why not just create the debugger datum global in its own file, since its loaded way earlier than this DM file
+//Well for whatever reason then the Master gets created first and then the debugger when doing that
+//So thats why this code lives here now, until someone finds out how Byond inits globals
+GLOBAL_REAL(Debugger, /datum/debugger) = new
 //This is the ABSOLUTE ONLY THING that should init globally like this
 GLOBAL_REAL(Master, /datum/controller/master) = new
 
@@ -34,6 +39,9 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	var/tickdrift = 0
 
 	var/sleep_delta = 1
+
+	//only run ticker subsystems for next n ticks.
+	var/skip_ticks = 0
 
 	var/make_runtime = 0
 
@@ -67,21 +75,37 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	// Highlander-style: there can only be one! Kill off the old and replace it with the new.
 
 	if(!random_seed)
-		random_seed = (TEST_RUN_PARAMETER in world.params) ? 29051994 : rand(1, 1e9)
+		#ifdef UNIT_TESTS
+		random_seed = 29051994
+		#else
+		random_seed = rand(1, 1e9)
+		#endif
 		rand_seed(random_seed)
 
 	var/list/_subsystems = list()
 	subsystems = _subsystems
 	if (Master != src)
-		if (istype(Master))
+		if (istype(Master)) //If there is an existing MC take over his stuff and delete it
 			Recover()
 			qdel(Master)
+			Master = src
 		else
-			var/list/subsytem_types = subtypesof(/datum/controller/subsystem)
-			sortTim(subsytem_types, /proc/cmp_subsystem_init)
-			for(var/I in subsytem_types)
-				_subsystems += new I
-		Master = src
+			//Code used for first master on game boot or if existing master got deleted
+			Master = src
+			var/list/subsystem_types = subtypesof(/datum/controller/subsystem)
+			sortTim(subsystem_types, /proc/cmp_subsystem_init)
+			//Find any abandoned subsystem from the previous master (if there was any)
+			var/list/existing_subsystems = list()
+			for(var/global_var in global.vars)
+				if (istype(global.vars[global_var], /datum/controller/subsystem))
+					existing_subsystems += global.vars[global_var]
+			//Either init a new SS or if an existing one was found use that
+			for(var/I in subsystem_types)
+				var/ss_idx = existing_subsystems.Find(I)
+				if (ss_idx)
+					_subsystems += existing_subsystems[ss_idx]
+				else
+					_subsystems += new I
 
 	if(!GLOB)
 		new /datum/controller/global_vars
@@ -112,7 +136,8 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	var/delay = 50 * ++Master.restart_count
 	Master.restart_timeout = world.time + delay
 	Master.restart_clear = world.time + (delay * 2)
-	Master.processing = FALSE //stop ticking this one
+	if (Master) //Can only do this if master hasn't been deleted
+		Master.processing = FALSE //stop ticking this one
 	try
 		new/datum/controller/master()
 	catch
@@ -158,7 +183,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 		current_runlevel = Master.current_runlevel
 		StartProcessing(10)
 	else
-		to_chat(world, "<span class='boldannounce'>The Master Controller is having some issues, we will need to re-initialize EVERYTHING</span>")
+		to_chat(world, "<span class='boldannounce'>The Master Controller is having some issues, we will need to re-initialize EVERYTHING.</span>")
 		Initialize(20, TRUE)
 
 
@@ -185,7 +210,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	// Initialize subsystems.
 	current_ticklimit = CONFIG_GET(number/tick_limit_mc_init)
 	for (var/datum/controller/subsystem/SS in subsystems)
-		if (SS.flags & SS_NO_INIT)
+		if (SS.flags & SS_NO_INIT || SS.initialized) //Don't init SSs with the correspondig flag or if they already are initialzized
 			continue
 		SS.Initialize(REALTIMEOFDAY)
 		CHECK_TICK
@@ -284,7 +309,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	//(higher subsystems will be sooner in the queue, adding them later in the loop means we don't have to loop thru them next queue add)
 	sortTim(tickersubsystems, /proc/cmp_subsystem_priority)
 	for(var/I in runlevel_sorted_subsystems)
-		sortTim(runlevel_sorted_subsystems, /proc/cmp_subsystem_priority)
+		sortTim(I, /proc/cmp_subsystem_priority)
 		I += tickersubsystems
 
 	var/cached_runlevel = current_runlevel
@@ -334,7 +359,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 			new/datum/controller/failsafe() // (re)Start the failsafe.
 
 		//now do the actual stuff
-		if (!queue_head || !(iteration % 3))
+		if (!skip_ticks)
 			var/checking_runlevel = current_runlevel
 			if(cached_runlevel != checking_runlevel)
 				//resechedule subsystems
@@ -380,6 +405,9 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 
 		iteration++
 		last_run = world.time
+		if(skip_ticks)
+			skip_ticks--
+
 		src.sleep_delta = MC_AVERAGE_FAST(src.sleep_delta, sleep_delta)
 		current_ticklimit = TICK_LIMIT_RUNNING
 		if (processing * sleep_delta <= world.tick_lag)
@@ -446,6 +474,10 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 
 			queue_node_flags = queue_node.flags
 			queue_node_priority = queue_node.queued_priority
+
+			if(!(queue_node_flags & SS_TICKER) && skip_ticks)
+				queue_node = queue_node.queue_next
+				continue
 
 			//super special case, subsystems where we can't make them pause mid way through
 			//if we can't run them this tick (without going over a tick)
@@ -583,14 +615,23 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	log_world("MC: SoftReset: Finished.")
 	. = 1
 
-
+/datum/controller/master/proc/laggy_byond_map_update_incoming()
+	if (!skip_ticks)
+		skip_ticks = 1
 
 /datum/controller/master/stat_entry()
-	if(!statclick)
-		statclick = new/obj/effect/statclick/debug(null, "Initializing...", src)
-
-	stat("Byond:", "(FPS:[world.fps]) (TickCount:[world.time/world.tick_lag]) (TickDrift:[round(Master.tickdrift,1)]([round((Master.tickdrift/(world.time/world.tick_lag))*100,0.1)]%)) (Internal Tick Usage: [round(MAPTICK_LAST_INTERNAL_TICK_USAGE,0.1)]%)")
-	stat("Master Controller:", statclick.update("(TickRate:[Master.processing]) (Iteration:[Master.iteration]) (TickLimit: [round(Master.current_ticklimit, 0.1)])"))
+	var/list/tab_data = list()
+	tab_data["Byond"] = GENERATE_STAT_TEXT("(FPS:[world.fps]) (TickCount:[world.time/world.tick_lag]) (TickDrift:[round(Master.tickdrift,1)]([round((Master.tickdrift/(world.time/world.tick_lag))*100,0.1)]%)) (Internal Tick Usage: [round(MAPTICK_LAST_INTERNAL_TICK_USAGE,0.1)]%)")
+	tab_data["Master Controller"] = list(
+		text="(TickRate:[Master.processing]) (Iteration:[Master.iteration]) (TickLimit: [round(Master.current_ticklimit, 0.1)])",
+		action = "statClickDebug",
+		params=list(
+			"targetRef" = REF(src),
+			"class"="controller",
+		),
+		type=STAT_BUTTON,
+	)
+	return tab_data
 
 /datum/controller/master/StartLoadingMap()
 	//disallow more than one map to load at once, multithreading it will just cause race conditions
@@ -616,3 +657,8 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 		processing = CONFIG_GET(number/mc_tick_rate/base_mc_tick_rate)
 	else if (client_count > CONFIG_GET(number/mc_tick_rate/high_pop_mc_mode_amount))
 		processing = CONFIG_GET(number/mc_tick_rate/high_pop_mc_tick_rate)
+
+/datum/controller/master/proc/OnConfigLoad()
+	for (var/thing in subsystems)
+		var/datum/controller/subsystem/SS = thing
+		SS.OnConfigLoad()

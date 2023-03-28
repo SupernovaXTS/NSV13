@@ -3,6 +3,9 @@
 	var/deletes_extract = TRUE
 
 /datum/chemical_reaction/slime/on_reaction(datum/reagents/holder)
+	use_slime_core(holder)
+
+/datum/chemical_reaction/slime/proc/use_slime_core(datum/reagents/holder)
 	SSblackbox.record_feedback("tally", "slime_cores_used", 1, "type")
 	if(deletes_extract)
 		delete_extract(holder)
@@ -153,20 +156,15 @@
 
 	playsound(T, 'sound/effects/phasein.ogg', 100, 1)
 
-	for(var/mob/living/carbon/C in viewers(T, null))
+	for(var/mob/living/carbon/C in viewers(T))
 		C.flash_act()
-
-	for(var/i in 1 to 4 + rand(1,2))
-		var/chosen = getbork()
-		var/obj/B = new chosen(T)
-		if(prob(5))//Fry it!
-			var/obj/item/reagent_containers/food/snacks/deepfryholder/fried
-			fried = new(T, B)
-			fried.fry() // actually set the name and colour it
-			B = fried
-		if(prob(50))
-			for(var/j in 1 to rand(1, 3))
-				step(B, pick(NORTH,SOUTH,EAST,WEST))
+	var/chosen = getbork()
+	var/obj/B = new chosen(T)
+	if(prob(5))//Fry it!
+		var/obj/item/reagent_containers/food/snacks/deepfryholder/fried
+		fried = new(T, B)
+		fried.fry() // actually set the name and colour it
+		B = fried
 	..()
 
 /datum/chemical_reaction/slime/slimebork/proc/getbork()
@@ -230,8 +228,7 @@
 	if(holder && holder.my_atom)
 		var/turf/open/T = get_turf(holder.my_atom)
 		if(istype(T))
-			var/datum/gas/gastype = /datum/gas/nitrogen
-			T.atmos_spawn_air("[initial(gastype.id)]=50;TEMP=2.7")
+			T.atmos_spawn_air("n2=50;TEMP=2.7")
 
 /datum/chemical_reaction/slime/slimefireproof
 	name = "Slime Fireproof"
@@ -294,11 +291,11 @@
 	required_other = TRUE
 
 /datum/chemical_reaction/slime/slimeoverload/on_reaction(datum/reagents/holder, created_volume)
-	empulse(get_turf(holder.my_atom), 3, 7)
+	empulse(get_turf(holder.my_atom), 3, 7, magic=TRUE)
 	..()
 
 /datum/chemical_reaction/slime/slimecell
-	name = "Slime Powercell"
+	name = "Slime Power Cell"
 	id = "m_cell"
 	required_reagents = list(/datum/reagent/toxin/plasma = 1)
 	required_container = /obj/item/slime_extract/yellow
@@ -373,7 +370,7 @@
 	required_other = TRUE
 
 /datum/chemical_reaction/slime/slimebloodlust/on_reaction(datum/reagents/holder)
-	for(var/mob/living/simple_animal/slime/slime in viewers(get_turf(holder.my_atom), null))
+	for(var/mob/living/simple_animal/slime/slime in viewers(get_turf(holder.my_atom)))
 		if(slime.docile) //Undoes docility, but doesn't make rabid.
 			slime.visible_message("<span class='danger'>[slime] forgets its training, becoming wild once again!</span>")
 			slime.docile = FALSE
@@ -440,7 +437,7 @@
 	var/lastkey = holder.my_atom.fingerprintslast
 	var/touch_msg = "N/A"
 	if(lastkey)
-		var/mob/toucher = get_mob_by_key(lastkey)
+		var/mob/toucher = get_mob_by_ckey(lastkey)
 		touch_msg = "[ADMIN_LOOKUPFLW(toucher)]."
 	message_admins("Slime Explosion reaction started at [ADMIN_VERBOSEJMP(T)]. Last Fingerprint: [touch_msg]")
 	log_game("Slime Explosion reaction started at [AREACOORD(T)]. Last Fingerprint: [lastkey ? lastkey : "N/A"].")
@@ -453,7 +450,7 @@
 
 /datum/chemical_reaction/slime/slimeexplosion/proc/boom(datum/reagents/holder)
 	if(holder?.my_atom)
-		explosion(get_turf(holder.my_atom), 1 ,3, 6)
+		explosion(get_turf(holder.my_atom), 0, 2, 3)
 
 
 /datum/chemical_reaction/slime/slimecornoil
@@ -568,17 +565,19 @@
 	required_other = TRUE
 
 /datum/chemical_reaction/slime/slimestop/on_reaction(datum/reagents/holder)
-	sleep(50)
+	addtimer(CALLBACK(src, .proc/slime_stop, holder), 5 SECONDS)
+
+/datum/chemical_reaction/slime/slimestop/proc/slime_stop(datum/reagents/holder)
 	var/obj/item/slime_extract/sepia/extract = holder.my_atom
 	var/turf/T = get_turf(holder.my_atom)
 	new /obj/effect/timestop(T, null, null, null)
 	if(istype(extract))
 		if(extract.Uses > 0)
-			var/mob/lastheld = get_mob_by_key(holder.my_atom.fingerprintslast)
-			if(lastheld && !lastheld.equip_to_slot_if_possible(extract, SLOT_HANDS, disable_warning = TRUE))
+			var/mob/lastheld = get_mob_by_ckey(holder.my_atom.fingerprintslast)
+			if(lastheld && !lastheld.equip_to_slot_if_possible(extract, ITEM_SLOT_HANDS, disable_warning = TRUE))
 				extract.forceMove(get_turf(lastheld))
 
-	..()
+	use_slime_core(holder)
 
 /datum/chemical_reaction/slime/slimecamera
 	name = "Slime Camera"

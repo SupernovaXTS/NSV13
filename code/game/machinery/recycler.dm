@@ -8,6 +8,8 @@
 	layer = ABOVE_ALL_MOB_LAYER // Overhead
 	density = TRUE
 	circuit = /obj/item/circuitboard/machine/recycler
+	idle_power_usage = 50
+	active_power_usage = 200
 	var/safety_mode = FALSE // Temporarily stops machine if it detects a mob
 	var/icon_name = "grinder-o"
 	var/blood = 0
@@ -17,7 +19,7 @@
 	var/eat_victim_items = TRUE
 	var/item_recycle_sound = 'sound/items/welder.ogg'
 
-/obj/machinery/recycler/Initialize()
+/obj/machinery/recycler/Initialize(mapload)
 	AddComponent(/datum/component/material_container, list(/datum/material/iron, /datum/material/glass, /datum/material/copper, /datum/material/silver, /datum/material/plasma, /datum/material/gold, /datum/material/diamond, /datum/material/plastic, /datum/material/uranium, /datum/material/bananium, /datum/material/titanium, /datum/material/bluespace), INFINITY, FALSE, null, null, null, TRUE)
 	AddComponent(/datum/component/butchering, 1, amount_produced,amount_produced/5)
 	. = ..()
@@ -41,10 +43,10 @@
 
 /obj/machinery/recycler/examine(mob/user)
 	. = ..()
-	. += "<span class='notice'>Reclaiming <b>[amount_produced]%</b> of materials salvaged.<span>"
-	. += {"The power light is [(stat & NOPOWER) ? "off" : "on"].
-	The safety-mode light is [safety_mode ? "on" : "off"].
-	The safety-sensors status light is [obj_flags & EMAGGED ? "off" : "on"]."}
+	. += "<span class='notice'>Reclaiming <b>[amount_produced]%</b> of materials salvaged.</span>"
+	. += "The power light is [(machine_stat & NOPOWER) ? "off" : "on"].\n"+\
+	"The safety-mode light is [safety_mode ? "on" : "off"].\n"+\
+	"The safety-sensors status light is [obj_flags & EMAGGED ? "off" : "on"]."
 
 /obj/machinery/recycler/power_change()
 	..()
@@ -77,14 +79,14 @@
 
 /obj/machinery/recycler/update_icon()
 	..()
-	var/is_powered = !(stat & (BROKEN|NOPOWER))
+	var/is_powered = !(machine_stat & (BROKEN|NOPOWER))
 	if(safety_mode)
 		is_powered = FALSE
 	icon_state = icon_name + "[is_powered]" + "[(blood ? "bld" : "")]" // add the blood tag at the end
 
 /obj/machinery/recycler/Bumped(atom/movable/AM)
 
-	if(stat & (BROKEN|NOPOWER))
+	if(machine_stat & (BROKEN|NOPOWER))
 		return
 	if(!anchored)
 		return
@@ -116,7 +118,7 @@
 				crush_living(AM)
 			else
 				emergency_stop(AM)
-		else if(istype(AM, /obj/item))
+		else if(istype(AM, /obj/item) && !istype(AM, /obj/item/stack))
 			recycle_item(AM)
 			items_recycled++
 		else
@@ -127,7 +129,10 @@
 		playsound(src, item_recycle_sound, 50, 1)
 
 /obj/machinery/recycler/proc/recycle_item(obj/item/I)
-
+	if(I.resistance_flags & INDESTRUCTIBLE) //indestructible item check
+		playsound(src, 'sound/machines/buzz-sigh.ogg', 50, 0)
+		I.forceMove(loc)
+		return
 	I.forceMove(loc)
 	var/obj/item/grown/log/L = I
 	if(istype(L))

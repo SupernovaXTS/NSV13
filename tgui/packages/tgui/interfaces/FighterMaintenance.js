@@ -1,3 +1,5 @@
+// NSV13
+
 import { Fragment } from 'inferno';
 import { useBackend, useLocalState } from '../backend';
 import { Box, Button, Section, ProgressBar, Knob } from '../components';
@@ -6,7 +8,11 @@ import { Window } from '../layouts';
 export const FighterMaintenance = (props, context) => {
   const { act, data } = useBackend(context);
   return (
-    <Window resizable theme="hackerman">
+    <Window
+      resizable
+      theme="hackerman"
+      width={440}
+      height={650}>
       <Window.Content scrollable>
         <Section>
           <Section title="Installed modules:">

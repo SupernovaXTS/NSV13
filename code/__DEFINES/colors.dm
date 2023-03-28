@@ -13,6 +13,7 @@
 #define COLOR_FLOORTILE_GRAY   "#8D8B8B"
 #define COLOR_ALMOST_BLACK	   "#333333"
 #define COLOR_BLACK            "#000000"
+#define COLOR_HALF_TRANSPARENT_BLACK    "#0000007A"
 #define COLOR_RED              "#FF0000"
 #define COLOR_RED_LIGHT        "#FF3333"
 #define COLOR_MAROON           "#800000"
@@ -38,6 +39,7 @@
 #define COLOR_RED_GRAY         "#B4696A"
 #define COLOR_PALE_BLUE_GRAY   "#98C5DF"
 #define COLOR_PALE_GREEN_GRAY  "#B7D993"
+#define COLOR_PALE_ORANGE		"#FFBE9D"
 #define COLOR_PALE_RED_GRAY    "#D59998"
 #define COLOR_PALE_PURPLE_GRAY "#CBB1CA"
 #define COLOR_PURPLE_GRAY      "#AE8CA8"
@@ -58,3 +60,16 @@
 #define COLOR_ASSEMBLY_LBLUE   "#5D99BE"
 #define COLOR_ASSEMBLY_BLUE    "#38559E"
 #define COLOR_ASSEMBLY_PURPLE  "#6F6192"
+
+//Colours used by blood brothers
+#define COLOR_LIST_BLOOD_BROTHERS list(\
+	"#FF5050",\
+	"#D977FD",\
+	"#422ED8",\
+	"#2D87A1",\
+	"#3ED8FD",\
+	"#0EF5CE",\
+	"#0DF447",\
+	"#D6B20C",\
+	"#FF902A",\
+)

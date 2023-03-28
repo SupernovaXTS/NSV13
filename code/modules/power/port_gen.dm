@@ -7,8 +7,8 @@
 	density = TRUE
 	anchored = FALSE
 	use_power = NO_POWER_USE
-	ui_x = 450
-	ui_y = 340
+
+
 
 	var/active = FALSE
 	var/power_gen = 5000
@@ -19,9 +19,9 @@
 
 	interaction_flags_atom = INTERACT_ATOM_ATTACK_HAND | INTERACT_ATOM_UI_INTERACT | INTERACT_ATOM_REQUIRES_ANCHORED
 
-/obj/machinery/power/port_gen/Initialize()
+/obj/machinery/power/port_gen/Initialize(mapload)
 	. = ..()
-	soundloop = new(list(src), active)
+	soundloop = new(src, active)
 
 /obj/machinery/power/port_gen/Destroy()
 	QDEL_NULL(soundloop)
@@ -87,12 +87,12 @@
 	var/time_per_sheet = 260
 	var/current_heat = 0
 
-/obj/machinery/power/port_gen/pacman/Initialize()
+/obj/machinery/power/port_gen/pacman/Initialize(mapload)
 	. = ..()
 	if(anchored)
 		connect_to_network()
 
-/obj/machinery/power/port_gen/pacman/Initialize()
+/obj/machinery/power/port_gen/pacman/Initialize(mapload)
 	. = ..()
 
 	var/obj/S = sheet_path
@@ -117,11 +117,11 @@
 
 /obj/machinery/power/port_gen/pacman/examine(mob/user)
 	. = ..()
-	. += "<span class='notice'>The generator has [sheets] units of [sheet_name] fuel left, producing [DisplayPower(power_gen)] per cycle.</span>"
+	. += "<span class='notice'>The generator has [sheets] units of [sheet_name] fuel left, producing [display_power(power_gen)] per cycle.</span>"
 	if(anchored)
 		. += "<span class='notice'>It is anchored to the ground.</span>"
 	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Fuel efficiency increased by <b>[(consumption*100)-100]%</b>.<span>"
+		. += "<span class='notice'>The status display reads: Fuel efficiency increased by <b>[(consumption*100)-100]%</b>.</span>"
 
 /obj/machinery/power/port_gen/pacman/HasFuel()
 	if(sheets >= 1 / (time_per_sheet / power_output) - sheet_left)
@@ -219,12 +219,16 @@
 /obj/machinery/power/port_gen/pacman/attack_paw(mob/user)
 	interact(user)
 
-/obj/machinery/power/port_gen/pacman/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-												datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/power/port_gen/pacman/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/power/port_gen/pacman/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "PortableGenerator", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "PortableGenerator")
 		ui.open()
+		ui.set_autoupdate(TRUE) // Fuel left, power generated, power in powernet, current heat(?)
 
 /obj/machinery/power/port_gen/pacman/ui_data()
 	var/data = list()
@@ -237,9 +241,9 @@
 	data["anchored"] = anchored
 	data["connected"] = (powernet == null ? 0 : 1)
 	data["ready_to_boot"] = anchored && HasFuel()
-	data["power_generated"] = DisplayPower(power_gen)
-	data["power_output"] = DisplayPower(power_gen * power_output)
-	data["power_available"] = (powernet == null ? 0 : DisplayPower(avail()))
+	data["power_generated"] = display_power(power_gen)
+	data["power_output"] = display_power(power_gen * power_output)
+	data["power_available"] = (powernet == null ? 0 : display_power(avail()))
 	data["current_heat"] = current_heat
 	. =  data
 

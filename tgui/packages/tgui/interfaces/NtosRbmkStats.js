@@ -1,3 +1,5 @@
+// NSV13
+
 import { map, sortBy } from 'common/collections';
 import { flow } from 'common/fp';
 import { toFixed } from 'common/math';
@@ -14,7 +16,10 @@ export const NtosRbmkStats = (props, context) => {
   const tempInputData = data.tempInputData.map((value, i) => [i, value]);
   const tempOutputdata = data.tempOutputdata.map((value, i) => [i, value]);
   return (
-    <NtosWindow resizable>
+    <NtosWindow
+      resizable
+      width={440}
+      height={650}>
       <NtosWindow.Content>
 
         <Section title="Legend:" buttons={
@@ -55,7 +60,7 @@ export const NtosRbmkStats = (props, context) => {
             {data.coolantOutput} °C
           </ProgressBar>
         </Section>
-        <Section title="Reactor Statistics:" height="200px">
+        <Section fill title="Reactor Statistics:" height="200px">
           <Chart.Line
             fillPositionedParent
             data={powerData}

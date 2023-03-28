@@ -254,10 +254,10 @@
 	desc = "An insult to Duke Purple is an insult to the Space Queen! Any proper gentleman will fight you, if you sully this tea."
 	list_reagents = list(/datum/reagent/consumable/tea = 30)
 
-/obj/item/reagent_containers/food/drinks/mug/coco
-	name = "Dutch hot coco"
+/obj/item/reagent_containers/food/drinks/mug/cocoa
+	name = "Dutch hot cocoa"
 	desc = "Made in Space South America."
-	list_reagents = list(/datum/reagent/consumable/hot_coco = 15, /datum/reagent/consumable/sugar = 5)
+	list_reagents = list(/datum/reagent/consumable/cocoa/hot_cocoa = 15, /datum/reagent/consumable/sugar = 5)
 	foodtype = SUGAR
 	resistance_flags = FREEZE_PROOF
 	custom_price = 42
@@ -278,6 +278,15 @@
 	icon_state = "beer"
 	list_reagents = list(/datum/reagent/consumable/ethanol/beer = 30)
 	foodtype = GRAIN | ALCOHOL
+
+/obj/item/reagent_containers/food/drinks/beer/almost_empty
+	var/amount
+	list_reagents = null
+
+/obj/item/reagent_containers/food/drinks/beer/almost_empty/Initialize(mapload)
+	. = ..()
+	amount = rand(1,4)
+	reagents.add_reagent(/datum/reagent/consumable/ethanol/beer, amount)
 
 /obj/item/reagent_containers/food/drinks/syndicatebeer
 	name = "syndicate beer"
@@ -367,6 +376,10 @@
 				name = "grape juice box"
 				desc = "Tasty grape juice in a fun little container. Non-alcoholic!"
 				foodtype = FRUIT
+			if(/datum/reagent/consumable/pineapplejuice)
+				icon_state = "pineapplebox"
+				name = "pineapple juice box"
+				desc = "Why would you even want this?"
 			if(/datum/reagent/consumable/milk/chocolate_milk)
 				icon_state = "chocolatebox"
 				name = "carton of chocolate milk"
@@ -382,7 +395,21 @@
 		name = "small carton"
 		desc = "A small carton, intended for holding drinks."
 
+/obj/item/reagent_containers/food/drinks/honeycomb
+	name = "Honeycomb"
+	desc = "A honeycomb made by an apid. It seems to be made out of beeswax and fairly weak."
+	icon = 'icons/obj/hydroponics/harvest.dmi'
+	icon_state = "honeycomb"
+	list_reagents = list(/datum/reagent/consumable/honey = 25)
 
+/obj/item/reagent_containers/food/drinks/honeycomb/attack_self(mob/user)
+	if(!reagents.total_volume)
+		user.visible_message("<span class='warning'>[user] snaps the [src] into 2 pieces!</span>",
+		"<span class='notice'>You snap [src] in half.</span>")
+		new /obj/item/stack/sheet/mineral/wax(user.loc, 2)
+		qdel(src)
+		return
+	return ..()
 
 //////////////////////////drinkingglass and shaker//
 //Note by Darem: This code handles the mixing of drinks. New drinks go in three places: In Chemistry-Reagents.dm (for the drink
@@ -426,6 +453,7 @@
 	volume = 30
 	spillable = TRUE
 
+
 //////////////////////////soda_cans//
 //These are in their own group to be used as IED's in /obj/item/grenade/ghettobomb.dm
 
@@ -449,7 +477,7 @@
 	playsound(H,'sound/items/drink.ogg', 80, 1)
 	reagents.trans_to(H, src.reagents.total_volume, transfered_by = H) //a big sip
 	sleep(5)
-	H.say(pick("Now, Outbomb Cuban Pete, THAT was a game.", "All these new fangled arcade games are too slow. I prefer the classics.", "They don't make 'em like Orion Trail anymore.", "You know what they say. Worst day of spess carp fishing is better than the best day at work.", "They don't make 'em like good old fashioned singularity engines anymore."))
+	H.say(pick("Now, Outbomb Cuban Pete, THAT was a game.", "All these new fangled arcade games are too slow. I prefer the classics.", "They don't make 'em like Orion Trail anymore.", "You know what they say. Worst day of spess carp fishing is better than the best day at work.", "They don't make 'em like good old-fashioned singularity engines anymore."))
 	if(H.age >= 30)
 		H.Stun(50)
 		sleep(50)
@@ -516,7 +544,7 @@
 	list_reagents = list(/datum/reagent/consumable/lemon_lime = 30)
 	foodtype = FRUIT
 
-/obj/item/reagent_containers/food/drinks/soda_cans/lemon_lime/Initialize()
+/obj/item/reagent_containers/food/drinks/soda_cans/lemon_lime/Initialize(mapload)
 	. = ..()
 	name = "lemon-lime soda"
 

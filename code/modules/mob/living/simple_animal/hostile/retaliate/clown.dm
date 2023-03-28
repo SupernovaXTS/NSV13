@@ -1,5 +1,5 @@
 /mob/living/simple_animal/hostile/retaliate/clown
-	name = "Clown"
+	name = JOB_NAME_CLOWN
 	desc = "A denizen of clown planet."
 	icon = 'icons/mob/clown_mobs.dmi'
 	icon_state = "clown"
@@ -23,8 +23,10 @@
 	attack_sound = 'sound/items/bikehorn.ogg'
 	obj_damage = 0
 	environment_smash = ENVIRONMENT_SMASH_NONE
-	del_on_death = 1
+	del_on_death = TRUE
 	loot = list(/obj/effect/mob_spawn/human/clown/corpse)
+
+	mobchatspan = "clown"
 
 	atmos_requirements = list("min_oxy" = 5, "max_oxy" = 0, "min_tox" = 0, "max_tox" = 1, "min_co2" = 0, "max_co2" = 5, "min_n2" = 0, "max_n2" = 0)
 	minbodytemp = 270
@@ -39,10 +41,10 @@
 /mob/living/simple_animal/hostile/retaliate/clown/handle_temperature_damage()
 	if(bodytemperature < minbodytemp)
 		adjustBruteLoss(10)
-		throw_alert("temp", /obj/screen/alert/cold, 2)
+		throw_alert("temp", /atom/movable/screen/alert/cold, 2)
 	else if(bodytemperature > maxbodytemp)
 		adjustBruteLoss(15)
-		throw_alert("temp", /obj/screen/alert/hot, 3)
+		throw_alert("temp", /atom/movable/screen/alert/hot, 3)
 	else
 		clear_alert("temp")
 
@@ -149,6 +151,7 @@
 	maxHealth = 150
 	health = 150
 	pixel_x = -16
+	base_pixel_x = -16
 	speed = 10
 	melee_damage = 5
 	attacktext = "YA-HONKs"
@@ -163,13 +166,13 @@
 	response_help = "tries desperately to appease"
 	response_disarm = "foolishly pushes"
 	response_harm = "angers"
-	access_card = ACCESS_THEATRE
 	speak = list("HONK", "Honk!", "HAUAUANK!!!", "GUUURRRRAAAHHH!!!")
 	emote_see = list("honks", "sweats", "grunts")
 	speak_chance = 5
 	maxHealth = 400
 	health = 400
 	pixel_x = -16
+	base_pixel_x = -16
 	speed = 2
 	melee_damage = 17
 	attacktext = "pummels"
@@ -249,6 +252,7 @@
 	maxHealth = 130
 	health = 130
 	pixel_x = -16
+	base_pixel_x = -16
 	speed = -5
 	melee_damage = 15
 	attacktext = "awkwardly flails at"

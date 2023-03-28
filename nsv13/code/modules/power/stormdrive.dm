@@ -56,10 +56,10 @@ Control Rods
 #define LOW_IPM 0.5
 #define MEDIOCRE_IPM 0.85
 #define HIGH_IPM 1.25
-#define VERY_HIGH_IPM 1.75
+#define VERY_HIGH_IPM 1.85
 
 #define LOW_COOLING 0.75
-#define HIGH_COOLING 2.25
+#define HIGH_COOLING 2.025
 #define VERY_HIGH_COOLING 4
 
 #define LOW_RADIATION 0.75
@@ -137,7 +137,8 @@ Control Rods
 	var/reactor_temperature_critical = 650 //Base state temperature theshold value
 	var/reactor_temperature_meltdown = 800 //Base state temperature theshold value
 	var/reactor_temperature_modifier = 1 //Modifier handling temperature thesholds
-	var/reactor_starvation = 0 //Tracking each tick the reactor is still online and without fuel
+	var/reactor_stability = 100 //Stability of the reaction
+	var/obj/effect/countdown/stormdrive/stability //Our not so visible stability factor
 	var/reactor_id = null //This should match the reactor_id on the reactor control console during INITALIZATION - and should follow this general guideline for standard gameplay: 1 = primary ship, 2 = secondary ship, 3 = syndicate ship -- alternatively you can make players have to link them manually every round
 	var/souls_devoured = null //Some questions should not be asked
 	var/dumping_fuel = FALSE //Are we dumping our fuel?
@@ -157,7 +158,7 @@ Control Rods
 	engineering_channel = "Syndicate"
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/solgov
-	name = "Class V ionic storm drive"
+	name = "class V ionic storm drive"
 	desc = "A highly advanced ionic drive used by SolGov to power their space vessels. Through the application of inverse-ions to the endostorm, more efficient matter to energy conversion is achieved."
 	base_power = 85000 //26% more power than class 4
 	icon = 'nsv13/goonstation/icons/reactor_solgov.dmi'
@@ -189,8 +190,11 @@ Control Rods
 					if(!do_after(user, 50, target = src))
 						control_rod_installation = FALSE
 						return
-					to_chat(user, "<span class='notice'>You mount the [I.name] to the reactor control coupleing. </span>")
 					control_rod_installation = FALSE
+					if ( state == REACTOR_STATE_IDLE ) // Need to recheck the maintenance mode in case someone switched it while pushing in rods
+						to_chat(user, "<span class='warning'>[src] is not in maintenance mode! Enagage maintenance safety protocols before opening the lid!</span>")
+						return FALSE
+					to_chat(user, "<span class='notice'>You mount the [I.name] to the reactor control coupleing. </span>")
 					control_rods += I
 					I.forceMove(src)
 					update_icon()
@@ -240,10 +244,9 @@ Control Rods
 			repairing = FALSE
 			return
 		to_chat(user, "<span class='warning'>Some of the sludge spills on the floor!</span>")
-		playsound(loc, 'sound/effects/gib_step.ogg', 100)
-		for(var/turf/open/floor in orange(3, get_turf(src)))
-			if(prob(35))
-				new /obj/effect/decal/nuclear_waste (floor)
+		var/obj/effect/landmark/nuclear_waste_spawner/weak/sludge_spawner = new (get_turf(src))
+		if (sludge_spawner)
+			sludge_spawner.fire()
 		state = REACTOR_STATE_REPAIR
 		repairing = FALSE
 		update_icon()
@@ -290,17 +293,49 @@ Control Rods
 			update_icon()
 			return TRUE
 
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/bullet_act(obj/item/projectile/Proj)
+	if(state == REACTOR_STATE_RUNNING)
+		var/turf/L = loc
+		if(!istype(L))
+			return FALSE
+		if(!istype(Proj.firer, /obj/structure/particle_accelerator/particle_emitter))
+			investigate_log("has been hit by [Proj] fired by [key_name(Proj.firer)]", INVESTIGATE_ENGINES)
+		if(Proj.flag != "bullet")
+			reactor_stability -= Proj.damage / 15
+		else
+			reactor_stability -= Proj.damage / 100 //It is pretty durable
+		return BULLET_ACT_HIT
+
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/blob_act(obj/structure/blob/B)
+	if(state == REACTOR_STATE_RUNNING)
+		if(heat < 400)
+			reactor_stability -= B.obj_integrity / 10
+			B.take_damage(100, BURN)
+		else
+			reactor_stability -= B.obj_integrity / 10
+			B.take_damage(1000, BURN)
+
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/attack_alien(mob/living/carbon/alien/A)
+	if(state == REACTOR_STATE_RUNNING)
+		if(heat < 400)
+			reactor_stability -= 1.5
+			A.take_bodypart_damage(burn = 20)
+		else
+			reactor_stability -= 1.5
+			A.take_bodypart_damage(burn = 75)
+
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/attack_hand(mob/living/carbon/user)
 	.=..()
 	if(state >= REACTOR_STATE_MELTDOWN)
 		return
 	ui_interact(user)
 
-/obj/machinery/atmospherics/components/binary/stormdrive_reactor/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = 0, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state) // Remember to use the appropriate state.
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "StormdriveControlRods", name, 560, 600, master_ui, state)
+		ui = new(user, src, "StormdriveControlRods")
 		ui.open()
+		ui.set_autoupdate(TRUE)
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/ui_act(action, params, datum/tgui/ui)
 	if(..())
@@ -326,12 +361,15 @@ Control Rods
 						if(!do_after(usr, 50, target = src))
 							control_rod_installation = FALSE
 							return
+						control_rod_installation = FALSE
+						if ( state == REACTOR_STATE_IDLE ) // Need to recheck the maintenance mode in case someone switched it while pulling out rods
+							to_chat(usr, "<span class='warning'>[src] is not in maintenance mode! Enagage maintenance safety protocols before opening the lid!</span>")
+							return FALSE
 						to_chat(usr, "<span class='notice'>You remove the control rod from the [src].</span>")
 						var/obj/item/control_rod/cr = locate(params["target"])
 						control_rods -= cr
 						cr?.forceMove(get_turf(usr))
 						update_icon()
-						control_rod_installation = FALSE
 						handle_control_rod_efficiency()
 						handle_control_rod_integrity()
 				if(REACTOR_STATE_RUNNING)
@@ -418,19 +456,21 @@ Control Rods
 		heat = 0
 	last_power_produced = 0 //Update UI to show that it's not making power now
 	reaction_rate = 0
-	reactor_starvation = 0
+	reactor_stability = 0
 	if(state != REACTOR_STATE_MAINTENANCE)
 		state = REACTOR_STATE_IDLE //Force reactor restart.
 	set_light(0)
 	var/area/AR = get_area(src)
-	AR.looping_ambience = 'nsv13/sound/ambience/shipambience.ogg'
+	AR.ambient_buzz = 'nsv13/sound/ambience/shipambience.ogg'
 
-/obj/machinery/atmospherics/components/binary/stormdrive_reactor/Initialize()
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/Initialize(mapload)
 	. = ..()
 	radio = new(src)
 	radio.keyslot = new radio_key
 	radio.listening = 0
 	radio.recalculateChannels()
+	stability = new(src)
+	stability.start()
 	gas_records["constricted_plasma"] = list()
 	gas_records["plasma"] = list()
 	gas_records["tritium"] = list()
@@ -448,30 +488,38 @@ Control Rods
 
 /////// REACTOR START PROCS ////////
 
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/bullet_act(obj/item/projectile/energy/accelerated_particle/P, def_zone, piercing_hit = FALSE)
+	if(istype(P))
+		heat += P.energy
+		try_start()
+	else
+		. = ..()
+
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/try_start()
 
 	if(state == REACTOR_STATE_RUNNING || state == REACTOR_STATE_MELTDOWN || state == REACTOR_STATE_MAINTENANCE)
 		return FALSE
 	icon_state = "reactor_starting"
 	var/datum/gas_mixture/air1 = airs[1]
-	var/fuel_check = air1.get_moles(/datum/gas/plasma) * LOW_ROR + \
-					air1.get_moles(/datum/gas/constricted_plasma) * NORMAL_ROR + \
-					air1.get_moles(/datum/gas/carbon_dioxide) * HINDER_ROR + \
-					air1.get_moles(/datum/gas/water_vapor) * HINDER_ROR + \
-					air1.get_moles(/datum/gas/tritium) * HIGH_ROR + \
-					air1.get_moles(/datum/gas/hypernoblium) * REALLY_HINDER_ROR
+	var/fuel_check = air1.get_moles(GAS_PLASMA) * LOW_ROR + \
+					air1.get_moles(GAS_CONSTRICTED_PLASMA) * NORMAL_ROR + \
+					air1.get_moles(GAS_CO2) * HINDER_ROR + \
+					air1.get_moles(GAS_H2O) * HINDER_ROR + \
+					air1.get_moles(GAS_TRITIUM) * HIGH_ROR + \
+					air1.get_moles(GAS_HYPERNOB) * REALLY_HINDER_ROR
 
 	if(fuel_check >= start_threshold && heat >= start_threshold) //Checking equivalent of 20 moles of fuel and is hot enough
 		heat = start_threshold+10 //Avoids it getting heated up to 10000 by the PA, then turning it on, then getting insta meltdown.
 		visible_message("<span class='danger'>[src] starts to glow an ominous blue!</span>")
 		icon_state = "reactor_on"
 		state = REACTOR_STATE_RUNNING
+		reactor_stability = 100
 		set_light(5)
 		var/startup_sound = pick('nsv13/sound/effects/ship/reactor/startup.ogg', 'nsv13/sound/effects/ship/reactor/startup2.ogg')
 		playsound(loc, startup_sound, 100)
 		send_alert("Fission reaction initiated. Reactor now on-line.", override=TRUE)
 		var/area/AR = get_area(src)
-		AR.looping_ambience = 'nsv13/sound/ambience/engineering.ogg'
+		AR.ambient_buzz = 'nsv13/sound/ambience/engineering.ogg'
 		if(reaction_rate <= 0)
 			reaction_rate = 5
 		return TRUE
@@ -485,14 +533,14 @@ Control Rods
 
 	heat = start_threshold+10
 	var/datum/gas_mixture/air1 = airs[1]
-	air1.adjust_moles(/datum/gas/constricted_plasma, 1000)
-	air1.adjust_moles(/datum/gas/oxygen, 500)
-	air1.adjust_moles(/datum/gas/nitrogen, 500)
+	air1.adjust_moles(GAS_CONSTRICTED_PLASMA, 1000)
+	air1.adjust_moles(GAS_O2, 500)
+	air1.adjust_moles(GAS_N2, 500)
 	try_start()
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/juice_up(var/datum/gas/juice, var/quantity) //Admin command to add a specified amount of chosen gas to the drive
 	var/datum/gas_mixture/air1 = airs[1]
-	air1.adjust_moles(juice, quantity)
+	air1.adjust_moles(juice.id, quantity)
 
 /////// REACTOR PROCESSING ////////
 
@@ -536,72 +584,74 @@ Control Rods
 	var/datum/gas_mixture/air1 = airs[1]
 	var/nucleium_power_reduction = 0
 
-	var/fuel_check = ((air1.get_moles(/datum/gas/plasma) + air1.get_moles(/datum/gas/constricted_plasma) + air1.get_moles(/datum/gas/tritium)) / air1.total_moles()) * 100
+	var/fuel_check = ((air1.get_moles(GAS_PLASMA) + air1.get_moles(GAS_CONSTRICTED_PLASMA) + air1.get_moles(GAS_TRITIUM)) / air1.total_moles()) * 100
 	if(air1.total_moles() >= reaction_rate && fuel_check >= 12.5) //1:8 ratio
 		var/datum/gas_mixture/reaction_chamber_gases = air1.remove(reaction_rate)
 
 		//calculate the actual fuel mix
-		var/chamber_ror_total = reaction_chamber_gases.get_moles(/datum/gas/plasma) * LOW_ROR + \
-								reaction_chamber_gases.get_moles(/datum/gas/constricted_plasma) * NORMAL_ROR + \
-								reaction_chamber_gases.get_moles(/datum/gas/tritium) * HIGH_ROR + \
-								reaction_chamber_gases.get_moles(/datum/gas/nitrogen) * HINDER_ROR + \
-								reaction_chamber_gases.get_moles(/datum/gas/water_vapor) * HINDER_ROR + \
-								reaction_chamber_gases.get_moles(/datum/gas/hypernoblium) * REALLY_HINDER_ROR
+		var/chamber_ror_total = reaction_chamber_gases.get_moles(GAS_PLASMA) * LOW_ROR + \
+								reaction_chamber_gases.get_moles(GAS_CONSTRICTED_PLASMA) * NORMAL_ROR + \
+								reaction_chamber_gases.get_moles(GAS_TRITIUM) * HIGH_ROR + \
+								reaction_chamber_gases.get_moles(GAS_N2) * HINDER_ROR + \
+								reaction_chamber_gases.get_moles(GAS_H2O) * HINDER_ROR + \
+								reaction_chamber_gases.get_moles(GAS_HYPERNOB) * REALLY_HINDER_ROR
 		reaction_rate_modifier = chamber_ror_total / reaction_rate
 
 		//checking for gas modifiers
-		var/chamber_ipm_total = reaction_rate + reaction_chamber_gases.get_moles(/datum/gas/tritium) * HIGH_IPM + \
-												reaction_chamber_gases.get_moles(/datum/gas/oxygen) * HIGH_IPM + \
-												reaction_chamber_gases.get_moles(/datum/gas/pluoxium) * HIGH_IPM + \
-												reaction_chamber_gases.get_moles(/datum/gas/stimulum) * VERY_HIGH_IPM - \
-												reaction_chamber_gases.get_moles(/datum/gas/plasma) * MEDIOCRE_IPM - \
-												reaction_chamber_gases.get_moles(/datum/gas/carbon_dioxide) * LOW_IPM - \
-												reaction_chamber_gases.get_moles(/datum/gas/hypernoblium) * LOW_IPM
+		var/chamber_ipm_total = reaction_rate + reaction_chamber_gases.get_moles(GAS_TRITIUM) * HIGH_IPM + \
+												reaction_chamber_gases.get_moles(GAS_O2) * HIGH_IPM + \
+												reaction_chamber_gases.get_moles(GAS_PLUOXIUM) * HIGH_IPM + \
+												reaction_chamber_gases.get_moles(GAS_STIMULUM) * VERY_HIGH_IPM - \
+												reaction_chamber_gases.get_moles(GAS_PLASMA) * MEDIOCRE_IPM - \
+												reaction_chamber_gases.get_moles(GAS_CO2) * LOW_IPM - \
+												reaction_chamber_gases.get_moles(GAS_HYPERNOB) * LOW_IPM
 		input_power_modifier = chamber_ipm_total / reaction_rate
 
-		var/chamber_cooling_total = reaction_rate + reaction_chamber_gases.get_moles(/datum/gas/hypernoblium) * VERY_HIGH_COOLING + \
-													reaction_chamber_gases.get_moles(/datum/gas/nitrogen) * HIGH_COOLING + \
-													reaction_chamber_gases.get_moles(/datum/gas/carbon_dioxide) * HIGH_COOLING - \
-													reaction_chamber_gases.get_moles(/datum/gas/tritium) * LOW_COOLING - \
-													reaction_chamber_gases.get_moles(/datum/gas/nucleium) * LOW_COOLING - \
-													reaction_chamber_gases.get_moles(/datum/gas/stimulum) * LOW_COOLING
+		var/chamber_cooling_total = reaction_rate + reaction_chamber_gases.get_moles(GAS_HYPERNOB) * VERY_HIGH_COOLING + \
+													reaction_chamber_gases.get_moles(GAS_N2) * HIGH_COOLING + \
+													reaction_chamber_gases.get_moles(GAS_CO2) * HIGH_COOLING - \
+													reaction_chamber_gases.get_moles(GAS_TRITIUM) * LOW_COOLING - \
+													reaction_chamber_gases.get_moles(GAS_NUCLEIUM) * LOW_COOLING - \
+													reaction_chamber_gases.get_moles(GAS_STIMULUM) * LOW_COOLING
 		cooling_power_modifier = chamber_cooling_total / reaction_rate
 
-		var/chamber_radiation_total = reaction_rate + reaction_chamber_gases.get_moles(/datum/gas/tritium) * HIGH_RADIATION + \
-													reaction_chamber_gases.get_moles(/datum/gas/nucleium) * HIGH_RADIATION - \
-													reaction_chamber_gases.get_moles(/datum/gas/bz) * LOW_RADIATION
+		var/chamber_radiation_total = reaction_rate + reaction_chamber_gases.get_moles(GAS_TRITIUM) * HIGH_RADIATION + \
+													reaction_chamber_gases.get_moles(GAS_NUCLEIUM) * HIGH_RADIATION - \
+													reaction_chamber_gases.get_moles(GAS_BZ) * LOW_RADIATION
 		radiation_modifier = chamber_radiation_total / reaction_rate
 
-		var/chamber_reinforcement_total = reaction_rate + reaction_chamber_gases.get_moles(/datum/gas/pluoxium) * VERY_HIGH_REINFORCEMENT + \
-														reaction_chamber_gases.get_moles(/datum/gas/tritium) * HIGH_REINFORCEMENT + \
-														reaction_chamber_gases.get_moles(/datum/gas/nitrous_oxide) * HIGH_REINFORCEMENT - \
-														reaction_chamber_gases.get_moles(/datum/gas/nucleium) * LOW_REINFORCEMENT - \
-														reaction_chamber_gases.get_moles(/datum/gas/stimulum) * LOW_REINFORCEMENT - \
-														reaction_chamber_gases.get_moles(/datum/gas/bz) * LOW_REINFORCEMENT
+		var/chamber_reinforcement_total = reaction_rate + reaction_chamber_gases.get_moles(GAS_PLUOXIUM) * VERY_HIGH_REINFORCEMENT + \
+														reaction_chamber_gases.get_moles(GAS_TRITIUM) * HIGH_REINFORCEMENT + \
+														reaction_chamber_gases.get_moles(GAS_NITROUS) * HIGH_REINFORCEMENT - \
+														reaction_chamber_gases.get_moles(GAS_NUCLEIUM) * LOW_REINFORCEMENT - \
+														reaction_chamber_gases.get_moles(GAS_STIMULUM) * LOW_REINFORCEMENT - \
+														reaction_chamber_gases.get_moles(GAS_BZ) * LOW_REINFORCEMENT
 		reactor_temperature_modifier = chamber_reinforcement_total / reaction_rate
 
-		var/chamber_degradation_total = reaction_rate + reaction_chamber_gases.get_moles(/datum/gas/plasma) * HIGH_DEG_PROTECTION + \
-														reaction_chamber_gases.get_moles(/datum/gas/nitrous_oxide) * HIGH_DEG_PROTECTION + \
-														reaction_chamber_gases.get_moles(/datum/gas/hypernoblium) * HIGH_DEG_PROTECTION + \
-														reaction_chamber_gases.get_moles(/datum/gas/pluoxium) * HIGH_DEG_PROTECTION
+		var/chamber_degradation_total = reaction_rate + reaction_chamber_gases.get_moles(GAS_PLASMA) * HIGH_DEG_PROTECTION + \
+														reaction_chamber_gases.get_moles(GAS_NITROUS) * HIGH_DEG_PROTECTION + \
+														reaction_chamber_gases.get_moles(GAS_HYPERNOB) * HIGH_DEG_PROTECTION + \
+														reaction_chamber_gases.get_moles(GAS_PLUOXIUM) * HIGH_DEG_PROTECTION
 		control_rod_degradation_modifier = chamber_degradation_total / reaction_rate
 
-		nucleium_power_reduction = reaction_chamber_gases.get_moles(/datum/gas/nucleium) * 1000 //nucleium
+		nucleium_power_reduction = reaction_chamber_gases.get_moles(GAS_NUCLEIUM) * 1000 //nucleium
 
 		heat_gain = initial(heat_gain) + reaction_rate
 		reaction_chamber_gases.clear()
 
+		if(air1.total_moles() > ((reaction_rate * 12) + 20)) //Overpressurized input
+			reactor_stability -= 0.51 //Enough to counter below
+
 		if(fuel_check >= 25) //1:4 fuel ratio
-			if(reactor_starvation > 0)
-				reactor_starvation -= 0.5 //drops at half the full starvation rate
+			if(reactor_stability < 100)
+				reactor_stability += 0.5
+
 		else
-			reactor_starvation += 0.01 //Slowly gets hungry
-			handle_reactor_starvation()
+			reactor_stability -= 0.01 //Unideal ratio leads to destabilization
 
 	else
-		reactor_starvation ++
+		reactor_stability --
 		heat_gain = -5 //No plasma to react, so the reaction slowly dies off.
-		handle_reactor_starvation()
 
 	input_power = ((heat/150)**3) * input_power_modifier //Higher temperature = more power. Crank the temperature up, stop being so scared.
 	var/power_produced = base_power
@@ -612,11 +662,12 @@ Control Rods
 	handle_temperature_reinforcement()
 	handle_ftl_fuel_production()
 	handle_gas_records()
+	handle_reactor_stability()
 	update_icon()
 	radiation_pulse(src, (heat * radiation_modifier), 2)
 	ambient_temp_bleed()
 
-	if(last_power_produced > 2000000) //2MW
+	if(last_power_produced > 3000000) //3MW
 		handle_overload()
 
 	var/turf/T = get_turf(src)
@@ -675,13 +726,16 @@ Control Rods
 		for(var/obj/item/control_rod/cr in contents)
 			control_rod_integrity_total += cr.rod_integrity
 		control_rod_integrity = control_rod_integrity_total / control_rods.len
+	else
+		control_rod_integrity = 0
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_heat()
 	heat += heat_gain
 	target_heat = (-1)+2**(0.1*((100-control_rod_percent) * control_rod_modifier)) //Let there be math
 	if(heat > target_heat+((cooling_power * cooling_power_modifier)-heat_gain)) //If it's hotter than the desired temperature, + our cooling power, we need to cool it off.
 		if(can_cool())
-			heat -= cooling_power * cooling_power_modifier
+			if(control_rod_percent > 0)
+				heat -= cooling_power * cooling_power_modifier
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_reaction_rate()
 	target_reaction_rate = (0.5+(1e-03*((100-control_rod_percent) * control_rod_modifier)**2) * reaction_rate_modifier) + 1e-05*(heat**2)  //let the train derail!
@@ -695,13 +749,13 @@ Control Rods
 		var/datum/gas_mixture/air2 = airs[2]
 		var/output_starting_pressure = air2.return_pressure()
 		var/heat_kelvin = heat + 273.15
-		var/fuel_amount = air1.get_moles(/datum/gas/plasma) + air1.get_moles(/datum/gas/constricted_plasma) + air1.get_moles(/datum/gas/tritium)
+		var/fuel_amount = air1.get_moles(GAS_PLASMA) + air1.get_moles(GAS_CONSTRICTED_PLASMA) + air1.get_moles(GAS_TRITIUM)
 		if(output_starting_pressure >= max_output_pressure) //if pressured capped, nucleium backs up into the drive
-			air1.adjust_moles(/datum/gas/nucleium, ((fuel_amount / reaction_rate) / 10) * input_power_modifier)
+			air1.adjust_moles(GAS_NUCLEIUM, ((fuel_amount / reaction_rate) / 10) * input_power_modifier)
 			air1.set_temperature(heat_kelvin)
 			update_parents()
 		else
-			air2.adjust_moles(/datum/gas/nucleium, (reaction_rate / 10) * input_power_modifier)
+			air2.adjust_moles(GAS_NUCLEIUM, (reaction_rate / 10) * input_power_modifier)
 			air2.set_temperature(heat_kelvin)
 			update_parents()
 
@@ -722,71 +776,71 @@ Control Rods
 		var/datum/gas_mixture/air1 = airs[1]
 
 		var/list/constricted_plasma = gas_records["constricted_plasma"]
-		constricted_plasma += (air1.get_moles(/datum/gas/constricted_plasma) / air1.total_moles()) * 100
+		constricted_plasma += (air1.get_moles(GAS_CONSTRICTED_PLASMA) / air1.total_moles()) * 100
 		if(constricted_plasma.len > gas_records_length)
 			constricted_plasma.Cut(1, 2)
 		var/list/plasma = gas_records["plasma"]
-		plasma += (air1.get_moles(/datum/gas/plasma) / air1.total_moles()) * 100
+		plasma += (air1.get_moles(GAS_PLASMA) / air1.total_moles()) * 100
 		if(plasma.len > gas_records_length)
 			plasma.Cut(1, 2)
 		var/list/tritium = gas_records["tritium"]
-		tritium += (air1.get_moles(/datum/gas/tritium) / air1.total_moles()) * 100
+		tritium += (air1.get_moles(GAS_TRITIUM) / air1.total_moles()) * 100
 		if(tritium.len > gas_records_length)
 			tritium.Cut(1, 2)
 		var/list/o2 = gas_records["o2"]
-		o2 += (air1.get_moles(/datum/gas/oxygen) / air1.total_moles()) * 100
+		o2 += (air1.get_moles(GAS_O2) / air1.total_moles()) * 100
 		if(o2.len > gas_records_length)
 			o2.Cut(1, 2)
 		var/list/n2 = gas_records["n2"]
-		n2 += (air1.get_moles(/datum/gas/nitrogen) / air1.total_moles()) * 100
+		n2 += (air1.get_moles(GAS_N2) / air1.total_moles()) * 100
 		if(n2.len > gas_records_length)
 			n2.Cut(1, 2)
 		var/list/co2 = gas_records["co2"]
-		co2 += (air1.get_moles(/datum/gas/carbon_dioxide) / air1.total_moles()) * 100
+		co2 += (air1.get_moles(GAS_CO2) / air1.total_moles()) * 100
 		if(co2.len > gas_records_length)
 			co2.Cut(1, 2)
 		var/list/water_vapour = gas_records["water_vapour"]
-		water_vapour += (air1.get_moles(/datum/gas/water_vapor) / air1.total_moles()) * 100
+		water_vapour += (air1.get_moles(GAS_H2O) / air1.total_moles()) * 100
 		if(water_vapour.len > gas_records_length)
 			water_vapour.Cut(1, 2)
 		var/list/nob = gas_records["nob"]
-		nob += (air1.get_moles(/datum/gas/hypernoblium) / air1.total_moles()) * 100
+		nob += (air1.get_moles(GAS_HYPERNOB) / air1.total_moles()) * 100
 		if(nob.len > gas_records_length)
 			nob.Cut(1, 2)
 		var/list/n2o = gas_records["n2o"]
-		n2o += (air1.get_moles(/datum/gas/nitrous_oxide) / air1.total_moles()) * 100
+		n2o += (air1.get_moles(GAS_NITROUS) / air1.total_moles()) * 100
 		if(n2o.len > gas_records_length)
 			n2o.Cut(1, 2)
 		var/list/no2 = gas_records["no2"]
-		no2 += (air1.get_moles(/datum/gas/nitryl) / air1.total_moles()) * 100
+		no2 += (air1.get_moles(GAS_NITRYL) / air1.total_moles()) * 100
 		if(no2.len > gas_records_length)
 			no2.Cut(1, 2)
 		var/list/bz = gas_records["bz"]
-		bz += (air1.get_moles(/datum/gas/bz) / air1.total_moles()) * 100
+		bz += (air1.get_moles(GAS_BZ) / air1.total_moles()) * 100
 		if(bz.len > gas_records_length)
 			bz.Cut(1, 2)
 		var/list/stim = gas_records["stim"]
-		stim += (air1.get_moles(/datum/gas/stimulum) / air1.total_moles()) * 100
+		stim += (air1.get_moles(GAS_STIMULUM) / air1.total_moles()) * 100
 		if(stim.len > gas_records_length)
 			stim.Cut(1, 2)
 		var/list/pluoxium = gas_records["pluoxium"]
-		pluoxium += (air1.get_moles(/datum/gas/pluoxium) / air1.total_moles()) * 100
+		pluoxium += (air1.get_moles(GAS_PLUOXIUM) / air1.total_moles()) * 100
 		if(pluoxium.len > gas_records_length)
 			pluoxium.Cut(1, 2)
 		var/list/nucleium = gas_records["nucleium"]
-		nucleium += (air1.get_moles(/datum/gas/nucleium) / air1.total_moles()) * 100
+		nucleium += (air1.get_moles(GAS_NUCLEIUM) / air1.total_moles()) * 100
 		if(nucleium.len > gas_records_length)
 			nucleium.Cut(1, 2)
 
-//////// STARVATION PROCS ////////
+//////// STABILITY PROCS ////////
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/Bumped(atom/movable/A)
 	if(!ismob(A))
 		return
 	var/mob/living/carbon/C = A
 	if(C.has_status_effect(/datum/status_effect/incapacitating/knockdown)) //check to see if they are valid prey
-		switch(reactor_starvation)
-			if(0 to 25) //Concussions for the Concussiondrive
+		switch(reactor_stability)
+			if(50 to INFINITY) //Concussions for the Concussiondrive
 				if(C.get_bodypart(BODY_ZONE_HEAD))
 					var/obj/item/bodypart/affecting = C.get_bodypart(BODY_ZONE_HEAD)
 					if(affecting && affecting.receive_damage(5)) //minor brute damage
@@ -797,7 +851,7 @@ Control Rods
 					C.visible_message("<span class='warning'>You bonk your head on the outcasing of the [src]</span>")
 					playsound(src, 'sound/effects/bang.ogg', 100, TRUE) //temp - find a better sound
 					return
-			if(25 to 100) //Flesh for the Fleshdrive
+			if(25 to 50) //Flesh for the Fleshdrive
 				if(C.get_bodypart(BODY_ZONE_L_LEG))
 					var/obj/item/bodypart/affecting = C.get_bodypart(BODY_ZONE_L_LEG)
 					C.visible_message("<span class='danger'><B>A blue glow envelops your leg!</B></span>")
@@ -805,7 +859,7 @@ Control Rods
 					playsound(src, 'sound/effects/phasein.ogg', 100, TRUE) //temp - find a better sound
 
 					var/datum/gas_mixture/air1 = airs[1]
-					air1.adjust_moles(/datum/gas/plasma, 25)
+					air1.adjust_moles(GAS_PLASMA, 25)
 					return
 
 				if(C.get_bodypart(BODY_ZONE_R_LEG))
@@ -815,10 +869,10 @@ Control Rods
 					playsound(src, 'sound/effects/phasein.ogg', 100, TRUE) //temp - find a better sound
 
 					var/datum/gas_mixture/air1 = airs[1]
-					air1.adjust_moles(/datum/gas/plasma, 25)
+					air1.adjust_moles(GAS_PLASMA, 25)
 					return
 
-			if(100 to INFINITY) //Souls for the Souldrive
+			if(-INFINITY to 25) //Souls for the Souldrive
 				C.visible_message("<span class='danger'><B>Blue particles surround your body!</B></span>")
 				C.gib()
 				playsound(src, 'sound/effects/phasein.ogg', 100, TRUE) //temp - find a better sound
@@ -826,7 +880,7 @@ Control Rods
 				handle_souldrive()
 
 				var/datum/gas_mixture/air1 = airs[1]
-				air1.adjust_moles(/datum/gas/plasma, 100)
+				air1.adjust_moles(GAS_PLASMA, 100)
 				return
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_souldrive()
@@ -840,22 +894,56 @@ Control Rods
 	fdel(json_file)
 	WRITE_FILE(json_file, json_encode(json))
 
-/obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_reactor_starvation()
-	if(prob(reactor_starvation))
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_reactor_stability()
+	if(reactor_stability > 100)
+		reactor_stability = 100
+	if(reactor_stability < 0)
+		reactor_stability = 0
+
+	if(prob((100 - reactor_stability) / 3)) //Localized gravity event as a warning
 		grav_pull()
 		playsound(loc, 'sound/effects/empulse.ogg', 100)
 		for(var/mob/living/M in orange(((heat / 40) + 5), src))
-			shake_camera(M, 2, 1)
+			shake_with_inertia(M, 2, 1)
 
+	if(reactor_stability < 75)
+		if(prob((100 - reactor_stability) / 4)) //Destabilize the balance a little
+			if(prob(50))
+				heat += reaction_rate * rand(5,8)
+			else
+				reaction_rate += reaction_rate / rand(3,5)
 
-/obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/grav_pull() //HUNGRY!
+	if(reactor_stability < 15)
+		if(prob(1))
+			var/anom = rand(1,10)
+			switch(anom)
+				if(1 to 4)
+					new /obj/effect/anomaly/stormdrive/surge(src, rand(2000, 5000))
+				if(5 to 8)
+					new /obj/effect/anomaly/stormdrive/sheer(src, rand(2000, 5000))
+				if(9 to 10)
+					new /obj/effect/anomaly/stormdrive/squall(src, rand(2000, 5000))
+			reactor_stability += 15 //Spike that stab back up
+			playsound(loc, 'sound/effects/empulse.ogg', 100)
+
+	switch(reactor_stability) //Entropy nudge
+		if(0 to 1)
+			heat += 1
+		if(1 to 15)
+			heat += 0.5
+		if(15 to 30)
+			heat += 0.1
+		if(30 to 75)
+			heat += 0.01
+
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/grav_pull()
 	for(var/obj/O in orange((heat / 40), src))
 		if(!O.anchored)
 			step_towards(O,src)
 	for(var/mob/living/M in orange((heat / 40), src))
 		if(!M.mob_negates_gravity())
 			step_towards(M,src)
-			M.Knockdown(40) //Knockdown prey so it can't get away!
+			M.Knockdown(40)
 
 //////// OTHER PROCS ////////
 
@@ -885,12 +973,12 @@ Control Rods
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/handle_overload()
 	switch(last_power_produced)
-		if(2000000 to 3000000) //2MW to 3MW
+		if(3000000 to 5000000) //3MW to 5MW
 			if(prob(0.1))
 				for(var/obj/machinery/light/L in orange(8, src))
 					if(prob(25))
 						L.flicker()
-		if(3000000 to 5000000) //3MW to 5MW
+		if(5000000 to 8000000) //5MW to 8MW
 			if(prob(0.1))
 				for(var/obj/machinery/light/L in orange(25, src))
 					if(prob(25))
@@ -899,7 +987,7 @@ Control Rods
 				for(var/obj/machinery/light/L in orange(8, src))
 					if(prob(25))
 						L.flicker()
-		if(5000000 to 10000000) //5MW to 10MW
+		if(8000000 to 12000000) //8MW to 12MW
 			if(prob(0.1))
 				for(var/ar in SSmapping.areas_in_z["[z]"])
 					var/area/AR = ar
@@ -907,23 +995,52 @@ Control Rods
 						if(prob(25))
 							L.flicker()
 			if(prob(1))
-				for(var/obj/machinery/light/L in orange(10, src))
-					if(prob(25))
-						L.burn_out()
+				var/list/light_candidates = list()
+				for(var/obj/machinery/light/L in orange(12, src))
+					light_candidates += L
+
+				for(var/I = 0, I < 3, I++)
+					if(length(light_candidates))
+						var/obj/machinery/light/OL = pick_n_take(light_candidates)
+						var/fate = rand(1, 100)
+						switch(fate)
+							if(1 to 25)
+								OL.burn_out()
+							if(26 to 35)
+								OL.break_light_tube()
 					else
-						L.flicker()
-			if(prob(0.01))
+						break
+			if(prob(0.02))
+				for(var/obj/machinery/power/grounding_rod/R in orange(5, src))
+					R.take_damage(rand(25, 50))
 				tesla_zap(src, 5, 1000)
-		if(10000000 to INFINITY) //10MW+
+				reactor_stability -= rand(5, 10)
+		if(12000000 to INFINITY) //12MW+
 			if(prob(1))
 				for(var/obj/machinery/light/L in GLOB.machines)
 					if(prob(50) && shares_overmap(src, L))
 						L.flicker()
 			if(prob(5))
+				var/list/light_candidates = list()
 				for(var/obj/machinery/light/L in orange(12, src))
-					L.burn_out() //If there are even any left by this stage
-			if(prob(0.1))
+					light_candidates += L
+
+				for(var/I = 0, I < 5, I++)
+					if(length(light_candidates))
+						var/obj/machinery/light/OL = pick_n_take(light_candidates)
+						var/fate = rand(1, 100)
+						switch(fate)
+							if(1 to 25)
+								OL.burn_out()
+							if(25 to 35)
+								OL.break_light_tube()
+					else
+						break
+			if(prob(0.2))
+				for(var/obj/machinery/power/grounding_rod/R in orange(8, src))
+					R.take_damage(rand(25, 75))
 				tesla_zap(src, 8, 2000)
+				reactor_stability -= rand(10, 20)
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/update_icon() //include overlays for radiation output levels and power output levels (ALSO 1k+ levels)
 	if(state == REACTOR_STATE_MELTDOWN)
@@ -987,12 +1104,24 @@ Control Rods
 	. = ..()
 	if(icon_state == "broken")
 		. += "<span class='notice'>The reactor pit is full of plutonium sludge.</span>"
-	if(state == REACTOR_STATE_REPAIR)
-		. += "<span class='notice'>The duranium lining of the reactor pit is severly degraded.</span>"
-	if(state == REACTOR_STATE_REINFORCE)
-		. += "<span class='notice'>The lining requires reinforcing and welding in place.</span>"
-	if(state == REACTOR_STATE_REFIT)
-		. += "<span class='notice'>It is missing a reactor core.</span>"
+	switch(state)
+		if(REACTOR_STATE_REPAIR)
+			. += "<span class='notice'>The duranium lining of the reactor pit is severly degraded.</span>"
+		if(REACTOR_STATE_REINFORCE)
+			. += "<span class='notice'>The lining requires reinforcing and welding in place.</span>"
+		if(REACTOR_STATE_REFIT)
+			. += "<span class='notice'>It is missing a reactor core.</span>"
+
+/obj/effect/countdown/stormdrive
+	name = "stormdrive stability"
+	text_size = 1
+	color = "#00aeff"
+
+/obj/effect/countdown/stormdrive/get_value()
+	var/obj/machinery/atmospherics/components/binary/stormdrive_reactor/S = attached_to
+	if(!istype(S))
+		return
+	return "<div align='center' valign='middle' style='position:relative; top:0px; left:0px'>[round(S.reactor_stability, 1)]%</div>"
 
 ////////MELTDOWN////////
 
@@ -1019,7 +1148,7 @@ Control Rods
 			W.take_damage(rand(50, 200))
 
 		for(var/mob/living/M in orange(12, src))
-			shake_camera(M, 2, 1)
+			shake_with_inertia(M, 2, 1)
 
 		for(var/mob/living/M in orange(5, src))
 			M.knockOver()
@@ -1033,12 +1162,22 @@ Control Rods
 		cut_overlays()
 		flick("meltdown", src)
 		do_meltdown_effects()
+		fail_meltdown_objective()
 		sleep(10)
 		icon_state = "broken"
 		reactor_end_times = FALSE //We don't need this anymore
 	else
 		warning_state = WARNING_STATE_NONE
 		reactor_end_times = FALSE
+
+/obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/fail_meltdown_objective()
+	for(var/client/C in GLOB.clients)
+		if(C)
+			if(CONFIG_GET(flag/allow_crew_objectives))
+				var/mob/M = C.mob
+				if(M?.mind?.current && LAZYLEN(M.mind.crew_objectives) && (M.job == "Station Engineer" || M.job == "Chief Engineer" || M.job == "Atmospheric Technician"))
+					for(var/datum/objective/crew/meltdown/MO in M.mind.crew_objectives)
+						MO.meltdown = TRUE
 
 /obj/machinery/atmospherics/components/binary/stormdrive_reactor/proc/do_meltdown_effects()
 	explosion(get_turf(src), 0, 0, 10, 20, TRUE, TRUE)
@@ -1048,7 +1187,7 @@ Control Rods
 
 	for(var/mob/living/M in GLOB.alive_mob_list)
 		if(shares_overmap(src, M))
-			shake_camera(M, 3, 2)
+			shake_with_inertia(M, 3, 2)
 			if(!M.mob_negates_gravity())
 				M.Knockdown(50)
 				to_chat(M, "<span class='danger'You feel a wave of energy wash over you!</span>")
@@ -1061,18 +1200,26 @@ Control Rods
 				if(WS.range < 10) //small spawner
 					empulse(epi, 5, 15)
 					radiation_pulse(epi, 100)
-					if(prob(15))
-						if(prob(50))
-							new /obj/effect/anomaly/stormdrive/surge(epi, rand(2000, 5000))
-						else
-							new /obj/effect/anomaly/stormdrive/sheer(epi, rand(2000, 5000))
+					if(prob(50))
+						var/anom = rand(1,10)
+						switch(anom)
+							if(1 to 4)
+								new /obj/effect/anomaly/stormdrive/surge(epi, rand(2000, 5000))
+							if(5 to 8)
+								new /obj/effect/anomaly/stormdrive/sheer(epi, rand(2000, 5000))
+							if(9 to 10)
+								new /obj/effect/anomaly/stormdrive/squall(epi, rand(2000, 5000))
 				else //larger spawner
 					empulse(epi, 10, 25)
 					radiation_pulse(epi, 500)
-					if(prob(50)) //spawn SD anom
-						new /obj/effect/anomaly/stormdrive/surge(epi, rand(2000, 5000))
-					else
-						new /obj/effect/anomaly/stormdrive/sheer(epi, rand(2000, 5000))
+					var/anom = rand(1,10)
+					switch(anom) //spawn SD anom
+						if(1 to 4)
+							new /obj/effect/anomaly/stormdrive/surge(epi, rand(2000, 5000))
+						if(5 to 8)
+							new /obj/effect/anomaly/stormdrive/sheer(epi, rand(2000, 5000))
+						if(9 to 10)
+							new /obj/effect/anomaly/stormdrive/squall(epi, rand(2000, 5000))
 
 //////// Reactor Computer////////
 
@@ -1130,13 +1277,12 @@ Control Rods
 	ui_interact(user)
 
 /obj/machinery/computer/ship/reactor_control_computer/attack_ghost(mob/user)
-	. = ..()
 	if(!reactor)
 		to_chat(user, "<span class='warning'>Unable to detect linked reactor</span>")
 		return
-	ui_interact(user)
+	. = ..() //parent should call ui_interact
 
-/obj/machinery/computer/ship/reactor_control_computer/Initialize()
+/obj/machinery/computer/ship/reactor_control_computer/Initialize(mapload)
 	. = ..()
 	new /obj/item/book/manual/wiki/stormdrive(get_turf(src))
 	return INITIALIZE_HINT_LATELOAD
@@ -1152,26 +1298,21 @@ Control Rods
 		return
 	if(!reactor)
 		return
-	var/adjust = text2num(params["adjust"])
-	if(action == "control_rod_percent")
-		if(adjust && isnum(adjust))
-			reactor.control_rod_percent = adjust
-			if(reactor.control_rod_percent > 100)
-				reactor.control_rod_percent = 100
-				return
-			if(reactor.control_rod_percent < 0)
-				reactor.control_rod_percent = 0
-				return
 	switch(action)
+		if("control_rod_percent")
+			var/adjust = text2num(params["adjust"])
+			adjust = CLAMP(adjust, 0, 100)
+			reactor.control_rod_percent = adjust
+			reactor.update_icon()
 		if("rods_1")
 			reactor.control_rod_percent = 0
 			message_admins("[key_name(usr)] has fully raised reactor control rods in [get_area(usr)] [ADMIN_JMP(usr)]")
 			reactor.update_icon()
 		if("rods_2")
-			reactor.control_rod_percent = 18
+			reactor.control_rod_percent = 5
 			reactor.update_icon()
 		if("rods_3")
-			reactor.control_rod_percent = 28
+			reactor.control_rod_percent = 16
 			reactor.update_icon()
 		if("rods_4")
 			reactor.control_rod_percent = 33.6
@@ -1196,11 +1337,12 @@ Control Rods
 		if("pipe") //change my words
 			reactor.dumping_fuel = !reactor.dumping_fuel
 
-/obj/machinery/computer/ship/reactor_control_computer/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = 0, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state) // Remember to use the appropriate state.
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+/obj/machinery/computer/ship/reactor_control_computer/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "StormdriveConsole", name, 560, 600, master_ui, state)
+		ui = new(user, src, "StormdriveConsole")
 		ui.open()
+		ui.set_autoupdate(TRUE)
 
 /obj/machinery/computer/ship/reactor_control_computer/ui_data(mob/user)
 	var/list/data = list()
@@ -1218,32 +1360,31 @@ Control Rods
 		data["reactor_maintenance"] = TRUE
 	else
 		data["reactor_maintenance"] = FALSE
-	var/effective_fuel = 0
 
 	var/datum/gas_mixture/air1 = reactor.airs[1]
-	effective_fuel = air1.get_moles(/datum/gas/plasma) * LOW_ROR + \
-				air1.get_moles(/datum/gas/constricted_plasma) * NORMAL_ROR + \
-				air1.get_moles(/datum/gas/nitrogen) * HINDER_ROR + \
-				air1.get_moles(/datum/gas/water_vapor) * HINDER_ROR + \
-				air1.get_moles(/datum/gas/tritium) * HIGH_ROR
-	if(effective_fuel < 0)
-		effective_fuel = 0
 
-	data["fuel"] = effective_fuel
-	data["o2"] = air1.get_moles(/datum/gas/oxygen)
-	data["n2"] = air1.get_moles(/datum/gas/nitrogen)
-	data["co2"] = air1.get_moles(/datum/gas/carbon_dioxide)
-	data["plasma"] = air1.get_moles(/datum/gas/plasma)
-	data["water_vapour"] = air1.get_moles(/datum/gas/water_vapor)
-	data["nob"] = air1.get_moles(/datum/gas/hypernoblium)
-	data["n2o"] = air1.get_moles(/datum/gas/nitrous_oxide)
-	data["no2"] = air1.get_moles(/datum/gas/nitryl)
-	data["tritium"] = air1.get_moles(/datum/gas/tritium)
-	data["bz"] = air1.get_moles(/datum/gas/bz)
-	data["stim"] = air1.get_moles(/datum/gas/stimulum)
-	data["pluoxium"] = air1.get_moles(/datum/gas/pluoxium)
-	data["constricted_plasma"] = air1.get_moles(/datum/gas/constricted_plasma)
-	data["nucleium"] = air1.get_moles(/datum/gas/nucleium)
+	data["fuel_mix"] = air1.get_moles(GAS_PLASMA) + air1.get_moles(GAS_CONSTRICTED_PLASMA) + air1.get_moles(GAS_TRITIUM)
+	if(reactor.state == REACTOR_STATE_RUNNING)
+		data["mole_threshold_very_high"] = (reactor.reaction_rate * 18) + 20
+		data["mole_threshold_high"] = (reactor.reaction_rate * 12) + 20
+	else
+		data["mole_threshold_very_high"] = 120 //Just need to avoid that inital orange
+		data["mole_threshold_high"] = 80
+
+	data["o2"] = air1.get_moles(GAS_O2)
+	data["n2"] = air1.get_moles(GAS_N2)
+	data["co2"] = air1.get_moles(GAS_CO2)
+	data["plasma"] = air1.get_moles(GAS_PLASMA)
+	data["water_vapour"] = air1.get_moles(GAS_H2O)
+	data["nob"] = air1.get_moles(GAS_HYPERNOB)
+	data["n2o"] = air1.get_moles(GAS_NITROUS)
+	data["no2"] = air1.get_moles(GAS_NITRYL)
+	data["tritium"] = air1.get_moles(GAS_TRITIUM)
+	data["bz"] = air1.get_moles(GAS_BZ)
+	data["stim"] = air1.get_moles(GAS_STIMULUM)
+	data["pluoxium"] = air1.get_moles(GAS_PLUOXIUM)
+	data["constricted_plasma"] = air1.get_moles(GAS_CONSTRICTED_PLASMA)
+	data["nucleium"] = air1.get_moles(GAS_NUCLEIUM)
 	data["total_moles"] = air1.total_moles()
 
 	data["gas_records"] = reactor.gas_records
@@ -1324,11 +1465,11 @@ Control Rods
 	var/output_starting_pressure = air2.return_pressure()
 	if(output_starting_pressure >= max_output_pressure)
 		return
-	var/plasma_moles = air1.get_moles(/datum/gas/plasma)
+	var/plasma_moles = air1.get_moles(GAS_PLASMA)
 	var/plasma_transfer_moles = min(constriction_rate, plasma_moles)
-	air2.adjust_moles(/datum/gas/constricted_plasma, plasma_transfer_moles)
+	air2.adjust_moles(GAS_CONSTRICTED_PLASMA, plasma_transfer_moles)
 	air2.set_temperature(air1.return_temperature())
-	air1.adjust_moles(/datum/gas/plasma, -plasma_transfer_moles)
+	air1.adjust_moles(GAS_PLASMA, -plasma_transfer_moles)
 	update_parents()
 
 /obj/machinery/atmospherics/components/binary/magnetic_constrictor/crowbar_act(mob/user, obj/item/I)
@@ -1405,69 +1546,16 @@ Control Rods
 /obj/machinery/portable_atmospherics/canister/constricted_plasma
 	name = "constricted plasma canister"
 	desc = "Highly volatile plasma which has been magnetically constricted. The fuel which nuclear storm drives run off of."
-	icon_state = "orange"
-	gas_type = /datum/gas/constricted_plasma
+	gas_type = GAS_CONSTRICTED_PLASMA
+	greyscale_config = /datum/greyscale_config/canister/hazard
+	greyscale_colors = "#aa18c7#000000"
 
 /obj/machinery/portable_atmospherics/canister/nucleium
 	name = "nucleium canister"
 	desc = "A waste plasma biproduct produced in the Stormdrive, used in quantum waveform generation."
-	icon_state = "orange"
-	gas_type = /datum/gas/nucleium
-
-
-/////// NUCLEAR WASTE////////
-
-/obj/effect/decal/nuclear_waste
-	name = "Plutonium sludge"
-	desc = "A writhing pool of heavily irradiated, spent reactor fuel. You probably shouldn't step through this..."
-	icon = 'nsv13/icons/obj/machinery/reactor_parts.dmi'
-	icon_state = "nuclearwaste"
-	alpha = 150
-	light_color = LIGHT_COLOR_CYAN
-	color = "#ff9eff"
-
-/obj/effect/decal/nuclear_waste/Initialize()
-	. = ..()
-	set_light(3)
-
-/obj/effect/decal/nuclear_waste/epicenter //The one that actually does the irradiating. This is to avoid every bit of sludge PROCESSING
-	name = "Dense nuclear sludge"
-
-/obj/effect/landmark/nuclear_waste_spawner //Clean way of spawning nuclear gunk after a reactor core meltdown.
-	name = "Nuclear waste spawner"
-	var/range = 5 //5 tile radius to spawn goop
-
-/obj/effect/landmark/nuclear_waste_spawner/strong
-	range = 10
-
-/obj/effect/landmark/nuclear_waste_spawner/proc/fire()
-	playsound(loc, 'sound/effects/gib_step.ogg', 100)
-	new /obj/effect/decal/nuclear_waste/epicenter(get_turf(src))
-	for(var/turf/open/floor in orange(range, get_turf(src)))
-		if(prob(35)) //Scatter the sludge, don't smear it everywhere
-			new /obj/effect/decal/nuclear_waste (floor)
-	qdel(src)
-
-/obj/effect/decal/nuclear_waste/epicenter/Initialize()
-	. = ..()
-	AddComponent(/datum/component/radioactive, 1500, src, 0)
-
-/obj/effect/decal/nuclear_waste/Crossed(atom/movable/AM)
-	. = ..()
-	if(isliving(AM))
-		var/mob/living/L = AM
-		playsound(loc, 'sound/effects/gib_step.ogg', HAS_TRAIT(L, TRAIT_LIGHT_STEP) ? 20 : 50, 1)
-	radiation_pulse(src, 500, 5) //MORE RADS
-
-/obj/effect/decal/nuclear_waste/attackby(obj/item/tool, mob/user)
-	if(tool.tool_behaviour == TOOL_SHOVEL)
-		radiation_pulse(src, 1000, 5) //MORE RADS
-		to_chat(user, "<span class='notice'>You start to clear [src]...</span>")
-		if(tool.use_tool(src, user, 50, volume=100))
-			to_chat(user, "<span class='notice'>You clear [src]. </span>")
-			qdel(src)
-			return
-	. = ..()
+	gas_type = GAS_NUCLEIUM
+	greyscale_colors = "#66C88F#000000"
+	greyscale_config = /datum/greyscale_config/canister/hazard
 
 /datum/weather/nuclear_fallout
 	name = "nuclear fallout"
@@ -1520,7 +1608,7 @@ Control Rods
 /////// ANOMALIES ///////
 
 /obj/effect/anomaly/stormdrive //PARENT
-	name = "Stormdrive Anomaly - PARENT "
+	name = "\improper Stormdrive Anomaly - PARENT "
 	desc = "A mysterious anomaly, unknown in origin."
 	var/freq_shift = null
 	var/code_shift = null
@@ -1529,6 +1617,14 @@ Control Rods
 	.=..()
 	freq_shift = rand(1, 10) / 10
 	code_shift = rand(1, 10) / 10
+	var/static/list/loc_connections = list(
+		COMSIG_ATOM_ENTERED = .proc/on_entered,
+	)
+	AddElement(/datum/element/connect_loc, loc_connections)
+
+/obj/effect/anomaly/stormdrive/proc/on_entered(datum/source, atom/movable/AM)
+	SIGNAL_HANDLER
+	return
 
 /obj/effect/anomaly/stormdrive/attackby(obj/item/I, mob/user, params) //Not going to make this easy
 	if(I.tool_behaviour == TOOL_ANALYZER)
@@ -1554,13 +1650,13 @@ Control Rods
 	else
 		radiation_pulse(src, 125)
 		var/turf/open/L = get_turf(src)
-		if(!istype(L) || !(L.air))
+		if(!istype(L) || !L.air)
 			return
 		var/datum/gas_mixture/env = L.return_air()
 		var/temperature = env.return_temperature() + 25 //Not super spicy
-		src.atmos_spawn_air("nucleium=15;TEMP=[temperature]")
+		atmos_spawn_air("nucleium=15;TEMP=[temperature]")
 
-/obj/effect/anomaly/stormdrive/sheer/Crossed(mob/living/M)
+/obj/effect/anomaly/stormdrive/sheer/on_entered(datum/source, mob/living/M)
 	radiation_pulse(src, 125)
 
 /obj/effect/anomaly/stormdrive/sheer/Bump(mob/living/M)
@@ -1594,7 +1690,7 @@ Control Rods
 		for(var/mob/living/M in orange(2, src))
 			mobShock(M)
 
-/obj/effect/anomaly/stormdrive/surge/Crossed(mob/living/M)
+/obj/effect/anomaly/stormdrive/surge/on_entered(datum/source, mob/living/M)
 	mobShock(M)
 
 /obj/effect/anomaly/stormdrive/surge/Bump(mob/living/M)
@@ -1625,25 +1721,123 @@ Control Rods
 	explosion(src, 0, 0, 1, 18, FALSE)
 	do_sparks(10, FALSE, src)
 
+/obj/effect/anomaly/stormdrive/squall //Gravity + Brute
+	name = "storm squall anomaly"
+	icon_state = "dragnetfield"
+	alpha = 65 //Not exactly easy to see
+
+/obj/effect/anomaly/stormdrive/squall/anomalyEffect()
+	var/direction = pick(GLOB.alldirs)
+	var/times = rand(2, 4)
+	for(var/I = 0, I < times, I++) //Appears to hop around, but actually passes through mobs
+		step(src, direction)
+
+	if(prob(90))
+		var/turf/open/L = get_turf(src)
+		if(!istype(L) || !L.air)
+			return
+		var/datum/gas_mixture/env = L.return_air()
+		var/temperature = env.return_temperature()
+		atmos_spawn_air("o2=5,n2=15;TEMP=[temperature]") //Add a little extra oxygenated air
+
+	else //throw everything away
+		for(var/atom/movable/AM in orange(4, src))
+			if(isliving(AM))
+				var/mob/living/M = AM
+				M.Paralyze(20)
+				M.Dizzy(5)
+				M.apply_damage(10)
+				var/atom/target = get_edge_target_turf(M, get_dir(src, get_step_away(M, src)))
+				M.throw_at(target, 4, 2)
+				continue
+			if(isobj(AM) && !AM.anchored)
+				var/atom/target = get_edge_target_turf(AM, get_dir(src, get_step_away(AM, src)))
+				AM.throw_at(target, 4, 2)
+
+/obj/effect/anomaly/stormdrive/squall/on_entered(datum/source, mob/living/M)
+	polarise(M)
+
+/obj/effect/anomaly/stormdrive/squall/Bump(mob/living/M)
+	polarise(M)
+
+/obj/effect/anomaly/stormdrive/squall/Bumped(atom/movable/AM)
+	polarise(AM)
+
+/obj/effect/anomaly/stormdrive/squall/proc/polarise(mob/living/A)
+	if(istype(A))
+		A.Dizzy(10)
+		A.Jitter(5)
+		A.adjust_disgust(20)
+		A.visible_message("<span class='danger'>The space around [A] begins to shimmer!</span>", \
+		"<span class='userdanger'>Your head swims as space appears to bend around you!</span>",
+		"<span class='italics'>You feel space shift slightly in your vicinity.</span>")
+		addtimer(CALLBACK(src, .proc/equalise, A), 5 SECONDS)
+
+/obj/effect/anomaly/stormdrive/squall/proc/equalise(mob/living/A)
+	var/list/throwlist = orange(6, A)
+	for(var/obj/O in throwlist)
+		if(!O.anchored)
+			O.throw_at(A, 6, 3)
+	for(var/mob/living/M in throwlist)
+		if(!M.mob_negates_gravity())
+			M.throw_at(A, 6, 3)
+
+	if(istype(A, /mob/living/carbon))
+		var/mob/living/carbon/C = A
+		var/list/parts = list(BODY_ZONE_L_LEG, BODY_ZONE_R_LEG, BODY_ZONE_L_ARM, BODY_ZONE_R_ARM)
+		var/selected = pick_n_take(parts)
+		if(C.get_bodypart(selected)) //First Attempt
+			var/obj/item/bodypart/affecting = C.get_bodypart(selected)
+			affecting.dismember(damtype)
+		else
+			selected = pick_n_take(parts) //Second Attempt
+			if(C.get_bodypart(selected))
+				var/obj/item/bodypart/affecting = C.get_bodypart(selected)
+				affecting.dismember(damtype)
+			else //Probably already dying
+				C.apply_damage(20)
+	else
+		A.apply_damage(20)
+
+/obj/effect/anomaly/stormdrive/squall/detonate()
+	for(var/atom/movable/AM in orange(6, src))
+		if(isliving(AM))
+			var/mob/living/M = AM
+			M.Paralyze(40)
+			M.Dizzy(10)
+			M.apply_damage(20)
+			var/atom/target = get_edge_target_turf(M, get_dir(src, get_step_away(M, src)))
+			M.throw_at(target, 6, 5)
+		if(isobj(AM) && !AM.anchored)
+			var/atom/target = get_edge_target_turf(AM, get_dir(src, get_step_away(AM, src)))
+			AM.throw_at(target, 6, 5)
+
+	var/turf/open/L = get_turf(src)
+	if(!istype(L) || !L.air)
+		return
+	var/datum/gas_mixture/env = L.return_air()
+	var/temperature = env.return_temperature()
+	atmos_spawn_air("o2=200,n2=200;TEMP=[temperature]") //Hope there is nothing flammable in here
+
 //////// MISC ///////
 
 /obj/item/book/manual/wiki/stormdrive
-	name = "Stormdrive Class IV SOP"
+	name = "\improper Stormdrive Class IV SOP"
 	icon_state ="bookEngineering2"
 	author = "CogWerk Engineering Reactor Design Department"
 	title = "Stormdrive Class IV SOP"
 	page_link = "Guide_to_the_Stormdrive_Engine"
 
 /obj/item/stormdrive_core
-	name = "Class IV Nuclear Storm Drive Reactor Core"
+	name = "\improper Class IV Nuclear Storm Drive Reactor Core"
 	desc = "This crate contains a live reactor core for a class IV nuclear storm drive."
 	icon = 'icons/obj/crates.dmi'
 	icon_state = "crate"
 	w_class = WEIGHT_CLASS_GIGANTIC
 
-/obj/item/stormdrive_core/Initialize()
+/obj/item/stormdrive_core/Initialize(mapload)
 	.=..()
-	AddComponent(/datum/component/twohanded/required)
+	AddComponent(/datum/component/two_handed, require_twohands=TRUE)
 
 /////// MOD COMP MONITORING PROGRAM ///////
 
@@ -1655,11 +1849,10 @@ Control Rods
 	extended_desc = "This program connects to specially calibrated sensors to provide information on the status of the storm drive."
 	requires_ntnet = TRUE
 	transfer_access = ACCESS_CONSTRUCTION
+	category = PROGRAM_CATEGORY_ENGI
 	network_destination = "storm drive monitoring system"
 	size = 2
 	tgui_id = "NtosStormdriveMonitor"
-	ui_x = 350
-	ui_y = 450
 	var/active = TRUE //Easy process throttle
 	var/obj/machinery/atmospherics/components/binary/stormdrive_reactor/reactor //Our reactor.
 
@@ -1714,18 +1907,17 @@ Control Rods
 	data["reactor_hot"] = reactor.reactor_temperature_hot
 	data["reactor_critical"] = reactor.reactor_temperature_critical
 	data["reactor_meltdown"] = reactor.reactor_temperature_meltdown
-	var/effective_fuel = 0
 
 	var/datum/gas_mixture/air1 = reactor.airs[1]
-	effective_fuel = air1.get_moles(/datum/gas/plasma) * LOW_ROR + \
-				air1.get_moles(/datum/gas/constricted_plasma) * NORMAL_ROR + \
-				air1.get_moles(/datum/gas/nitrogen) * HINDER_ROR + \
-				air1.get_moles(/datum/gas/water_vapor) * HINDER_ROR + \
-				air1.get_moles(/datum/gas/tritium) * HIGH_ROR
-	if(effective_fuel < 0)
-		effective_fuel = 0
+	data["total_moles"] = air1.total_moles()
+	if(reactor.state == REACTOR_STATE_RUNNING)
+		data["mole_threshold_very_high"] = (reactor.reaction_rate * 18) + 20
+		data["mole_threshold_high"] = (reactor.reaction_rate * 12) + 20
+	else
+		data["mole_threshold_very_high"] = 120 //Just need to avoid that inital orange
+		data["mole_threshold_high"] = 80
 
-	data["fuel"] = effective_fuel
+
 	return data
 
 /datum/computer_file/program/stormdrive_monitor/ui_act(action, params)

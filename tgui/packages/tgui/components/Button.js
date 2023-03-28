@@ -1,10 +1,14 @@
+/**
+ * @file
+ * @copyright 2020 Aleksej Komarov
+ * @license MIT
+ */
+
 import { classes, pureComponentHooks } from 'common/react';
 import { Component, createRef } from 'inferno';
-import { IS_IE8 } from '../byond';
 import { KEY_ENTER, KEY_ESCAPE, KEY_SPACE } from '../hotkeys';
-import { refocusLayout } from '../layouts';
 import { createLogger } from '../logging';
-import { Box } from './Box';
+import { Box, computeBoxClassName, computeBoxProps } from './Box';
 import { Icon } from './Icon';
 import { Tooltip } from './Tooltip';
 
@@ -15,19 +19,22 @@ export const Button = props => {
     className,
     fluid,
     icon,
+    iconRotation,
+    iconSpin,
+    iconPosition,
     color,
     disabled,
     selected,
     tooltip,
     tooltipPosition,
     ellipsis,
+    compact,
+    circular,
     content,
-    iconRotation,
-    iconSpin,
     children,
     onclick,
     onClick,
-    ilstyle,
+    verticalAlignContent,
     ...rest
   } = props;
   const hasContent = !!(content || children);
@@ -41,8 +48,8 @@ export const Button = props => {
   }
   // IE8: Use a lowercase "onclick" because synthetic events are fucked.
   // IE8: Use an "unselectable" prop because "user-select" doesn't work.
-  return (
-    <Box
+  let buttonContent = (
+    <div
       className={classes([
         'Button',
         fluid && 'Button--fluid',
@@ -50,15 +57,21 @@ export const Button = props => {
         selected && 'Button--selected',
         hasContent && 'Button--hasContent',
         ellipsis && 'Button--ellipsis',
+        circular && 'Button--circular',
+        compact && 'Button--compact',
+        iconPosition && 'Button--iconPosition--' + iconPosition,
+        verticalAlignContent && "Button--flex",
+        (verticalAlignContent && fluid) && "Button--flex--fluid",
+        verticalAlignContent && 'Button--verticalAlignContent--' + verticalAlignContent,
         (color && typeof color === 'string')
           ? 'Button--color--' + color
           : 'Button--color--default',
         className,
+        computeBoxClassName(rest),
       ])}
       tabIndex={!disabled && '0'}
-      unselectable={IS_IE8}
-      onclick={e => {
-        refocusLayout();
+      unselectable={Byond.IS_LTE_IE8}
+      onClick={e => {
         if (!disabled && onClick) {
           onClick(e);
         }
@@ -76,23 +89,41 @@ export const Button = props => {
         // Refocus layout on pressing escape.
         if (keyCode === KEY_ESCAPE) {
           e.preventDefault();
-          refocusLayout();
           return;
         }
       }}
-      {...rest}>
-      {icon && (
-        <Icon name={icon} rotation={iconRotation} spin={iconSpin} />
-      )}
-      {content}
-      {children}
-      {tooltip && (
-        <Tooltip
-          content={tooltip}
-          position={tooltipPosition} />
-      )}
-    </Box>
+      {...computeBoxProps(rest)}>
+      <div className="Button__content">
+        {icon && iconPosition !== 'right' && (
+          <Icon
+            name={icon}
+            rotation={iconRotation}
+            spin={iconSpin}
+          />
+        )}
+        {content}
+        {children}
+        {icon && iconPosition === 'right' && (
+          <Icon
+            name={icon}
+            color={iconColor}
+            rotation={iconRotation}
+            spin={iconSpin}
+          />
+        )}
+      </div>
+    </div>
   );
+
+  if (tooltip) {
+    buttonContent = (
+      <Tooltip content={tooltip} position={tooltipPosition}>
+        {buttonContent}
+      </Tooltip>
+    );
+  }
+
+  return buttonContent;
 };
 
 Button.defaultHooks = pureComponentHooks;
@@ -183,7 +214,7 @@ export class ButtonInput extends Component {
           input.focus();
           input.select();
         }
-        catch {}
+        catch { }
       }
     }
   }
@@ -219,7 +250,7 @@ export class ButtonInput extends Component {
       ...rest
     } = this.props;
 
-    return (
+    let buttonContent = (
       <Box
         className={classes([
           'Button',
@@ -259,14 +290,20 @@ export class ButtonInput extends Component {
             }
           }}
         />
-        {tooltip && (
-          <Tooltip
-            content={tooltip}
-            position={tooltipPosition}
-          />
-        )}
       </Box>
     );
+
+    if (tooltip) {
+      buttonContent = (
+        <Tooltip
+          content={tooltip}
+          position={tooltipPosition}>
+          {buttonContent}
+        </Tooltip>
+      );
+    }
+
+    return buttonContent;
   }
 }
 

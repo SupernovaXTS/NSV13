@@ -24,7 +24,7 @@
 	tastes = list("crust" = 1, "tomato" = 1, "cheese" = 1)
 	foodtype = GRAIN | VEGETABLES
 
-/obj/item/reagent_containers/food/snacks/pizza/margherita/robo/Initialize()
+/obj/item/reagent_containers/food/snacks/pizza/margherita/robo/Initialize(mapload)
 	bonus_reagents += list(/datum/reagent/nanomachines = 70)
 	return ..()
 
@@ -177,7 +177,7 @@
 			l_arm.dismember()
 		else
 			r_arm.dismember()
-		playsound(user,pick('sound/misc/desceration-01.ogg','sound/misc/desceration-02.ogg','sound/misc/desceration-01.ogg') ,50, TRUE, -1)
+		playsound(user,pick('sound/misc/desecration-01.ogg','sound/misc/desecration-02.ogg','sound/misc/desecration-01.ogg') ,50, TRUE, -1)
 
 /obj/item/reagent_containers/food/snacks/proc/i_kill_you(obj/item/I, mob/user)
 	if(istype(I, /obj/item/reagent_containers/food/snacks/pineappleslice))

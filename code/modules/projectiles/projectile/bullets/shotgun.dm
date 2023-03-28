@@ -1,6 +1,7 @@
 /obj/item/projectile/bullet/shotgun_slug
 	name = "12g shotgun slug"
 	damage = 60
+	armour_penetration = -20
 
 /obj/item/projectile/bullet/shotgun_beanbag
 	name = "beanbag slug"
@@ -10,16 +11,6 @@
 /obj/item/projectile/bullet/incendiary/shotgun
 	name = "incendiary slug"
 	damage = 20
-
-/obj/item/projectile/bullet/sleepy
-	name = "soporific slug"
-	damage = 0
-
-/obj/item/projectile/bullet/sleepy/on_hit(atom/target, blocked = FALSE)
-	if((blocked != 100) && isliving(target))
-		var/mob/living/L = target
-		L.Sleeping(50)
-	return ..()
 
 /obj/item/projectile/bullet/incendiary/shotgun/dragonsbreath
 	name = "dragonsbreath pellet"
@@ -40,7 +31,7 @@
 	icon = 'icons/obj/meteor.dmi'
 	icon_state = "dust"
 	damage = 20
-	paralyze = 80
+	paralyze = 20
 	hitsound = 'sound/effects/meteorimpact.ogg'
 
 /obj/item/projectile/bullet/shotgun_meteorslug/on_hit(atom/target, blocked = FALSE)
@@ -50,14 +41,14 @@
 		var/atom/throw_target = get_edge_target_turf(M, get_dir(src, get_step_away(M, src)))
 		M.safe_throw_at(throw_target, 3, 2)
 
-/obj/item/projectile/bullet/shotgun_meteorslug/Initialize()
+/obj/item/projectile/bullet/shotgun_meteorslug/Initialize(mapload)
 	. = ..()
 	SpinAnimation()
 
 /obj/item/projectile/bullet/shotgun_frag12
 	name ="frag12 slug"
 	damage = 25
-	paralyze = 50
+	paralyze = 10
 
 /obj/item/projectile/bullet/shotgun_frag12/on_hit(atom/target, blocked = FALSE)
 	..()
@@ -67,20 +58,24 @@
 /obj/item/projectile/bullet/pellet
 	var/tile_dropoff = 0.75
 	var/tile_dropoff_s = 0.5
+	ricochets_max = 1
+	ricochet_chance = 50
+	ricochet_decay_chance = 0.9
 
 /obj/item/projectile/bullet/pellet/shotgun_buckshot
 	name = "buckshot pellet"
-	damage = 12.5
+	damage = 9
+	tile_dropoff = 0.5
 
 /obj/item/projectile/bullet/pellet/shotgun_rubbershot
 	name = "rubbershot pellet"
 	damage = 3
-	stamina = 11
+	stamina = 9
 
 /obj/item/projectile/bullet/pellet/shotgun_incapacitate
 	name = "incapacitating pellet"
 	damage = 1
-	stamina = 6
+	stamina = 5
 
 /obj/item/projectile/bullet/pellet/Range()
 	..()
@@ -95,7 +90,7 @@
 	tile_dropoff = 0.55		//Come on it does 6 damage don't be like that.
 	damage = 6
 
-/obj/item/projectile/bullet/pellet/shotgun_improvised/Initialize()
+/obj/item/projectile/bullet/pellet/shotgun_improvised/Initialize(mapload)
 	. = ..()
 	range = rand(1, 8)
 
@@ -106,7 +101,7 @@
 // Mech Scattershot
 
 /obj/item/projectile/bullet/scattershot
-	damage = 24
+	damage = 18
 
 //Breaching Ammo
 

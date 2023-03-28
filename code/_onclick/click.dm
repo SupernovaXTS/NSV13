@@ -118,8 +118,8 @@
 		RestrainedClickOn(A)
 		return
 
-	if(in_throw_mode)
-		throw_item(A)
+	if(throw_mode && throw_item(A))
+		changeNext_move(CLICK_CD_THROW)
 		return
 
 	var/obj/item/W = get_active_held_item()
@@ -366,14 +366,14 @@
 	var/turf/T = get_turf(src)
 	if(T && user.TurfAdjacent(T))
 		user.listed_turf = T
-		user.client.statpanel = T.name
+		user.set_stat_tab(T.name)
 
 // Use this instead of /mob/proc/AltClickOn(atom/A) where you only want turf content listing without additional atom alt-click interaction
 /atom/proc/AltClickNoInteract(mob/user, atom/A)
 	var/turf/T = get_turf(A)
 	if(T && user.TurfAdjacent(T))
 		user.listed_turf = T
-		user.client.statpanel = T.name
+		user.set_stat_tab(T.name)
 
 /mob/proc/TurfAdjacent(turf/T)
 	return T.Adjacent(src)
@@ -412,7 +412,7 @@
 	playsound(usr.loc, 'sound/weapons/taser2.ogg', 75, 1)
 
 	LE.firer = src
-	LE.def_zone = get_organ_target()
+	LE.def_zone = ran_zone(zone_selected)
 	LE.preparePixelProjectile(A, src, params)
 	LE.fire()
 
@@ -445,14 +445,14 @@
 			setDir(WEST)
 
 //debug
-/obj/screen/proc/scale_to(x1,y1)
+/atom/movable/screen/proc/scale_to(x1,y1)
 	if(!y1)
 		y1 = x1
 	var/matrix/M = new
 	M.Scale(x1,y1)
 	transform = M
 
-/obj/screen/click_catcher
+/atom/movable/screen/click_catcher
 	icon = 'icons/mob/screen_gen.dmi'
 	icon_state = "catcher"
 	plane = CLICKCATCHER_PLANE
@@ -462,7 +462,7 @@
 #define MAX_SAFE_BYOND_ICON_SCALE_TILES (MAX_SAFE_BYOND_ICON_SCALE_PX / world.icon_size)
 #define MAX_SAFE_BYOND_ICON_SCALE_PX (33 * 32)			//Not using world.icon_size on purpose.
 
-/obj/screen/click_catcher/proc/UpdateGreed(view_size_x = 15, view_size_y = 15)
+/atom/movable/screen/click_catcher/proc/UpdateGreed(view_size_x = 15, view_size_y = 15)
 	var/icon/newicon = icon('icons/mob/screen_gen.dmi', "catcher")
 	var/ox = min(MAX_SAFE_BYOND_ICON_SCALE_TILES, view_size_x)
 	var/oy = min(MAX_SAFE_BYOND_ICON_SCALE_TILES, view_size_y)
@@ -477,16 +477,16 @@
 	M.Scale(px/sx, py/sy)
 	transform = M
 
-/obj/screen/click_catcher/Click(location, control, params)
+/atom/movable/screen/click_catcher/Click(location, control, params)
 	var/list/modifiers = params2list(params)
-	if(modifiers["middle"] && iscarbon(usr))
+	if(LAZYACCESS(modifiers, MIDDLE_CLICK) && iscarbon(usr))
 		var/mob/living/carbon/C = usr
 		C.swap_hand()
 	else
-		var/turf/T = params2turf(modifiers["screen-loc"], get_turf(usr.client ? usr.client.eye : usr), usr.client)
-		params += "&catcher=1"
-		if(T)
-			T.Click(location, control, params)
+		var/turf/click_turf = parse_caught_click_modifiers(modifiers, get_turf(usr.client ? usr.client.eye : usr), usr.client)
+		if (click_turf)
+			modifiers["catcher"] = TRUE
+			click_turf.Click(click_turf, control, list2params(modifiers))
 	. = 1
 
 /* MouseWheelOn */
@@ -506,7 +506,7 @@
 
 /mob/proc/check_click_intercept(params,A)
 	//Client level intercept
-	if(client && client.click_intercept)
+	if(client?.click_intercept)
 		if(call(client.click_intercept, "InterceptClickOn")(src, params, A))
 			return TRUE
 

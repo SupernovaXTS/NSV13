@@ -10,20 +10,18 @@
 	internal_magazine = TRUE
 	fire_sound = "sound/weapons/rifleshot.ogg"
 	fire_sound_volume = 80
-	vary_fire_sound = FALSE
 	rack_sound = "sound/weapons/mosinboltout.ogg"
 	bolt_drop_sound = "sound/weapons/mosinboltin.ogg"
 	tac_reloads = FALSE
 	weapon_weight = WEAPON_MEDIUM
-	block_upgrade_walk = 1
 
-obj/item/gun/ballistic/rifle/update_icon()
+/obj/item/gun/ballistic/rifle/update_icon()
 	..()
 	add_overlay("[icon_state]_bolt[bolt_locked ? "_locked" : ""]")
 
-obj/item/gun/ballistic/rifle/rack(mob/user = null)
-	if (bolt_locked == FALSE)
-		to_chat(user, "<span class='notice'>You open the bolt of \the [src]</span>")
+/obj/item/gun/ballistic/rifle/rack(mob/user = null)
+	if(bolt_locked == FALSE)
+		to_chat(user, "<span class='notice'>You open the bolt of \the [src].</span>")
 		playsound(src, rack_sound, rack_sound_volume, rack_sound_vary)
 		process_chamber(FALSE, FALSE, FALSE)
 		bolt_locked = TRUE
@@ -31,12 +29,12 @@ obj/item/gun/ballistic/rifle/rack(mob/user = null)
 		return
 	drop_bolt(user)
 
-obj/item/gun/ballistic/rifle/can_shoot()
+/obj/item/gun/ballistic/rifle/can_shoot()
 	if (bolt_locked)
 		return FALSE
 	return ..()
 
-obj/item/gun/ballistic/rifle/attackby(obj/item/A, mob/user, params)
+/obj/item/gun/ballistic/rifle/attackby(obj/item/A, mob/user, params)
 	if (!bolt_locked)
 		to_chat(user, "<span class='notice'>The bolt is closed!</span>")
 		return
@@ -55,11 +53,13 @@ obj/item/gun/ballistic/rifle/attackby(obj/item/A, mob/user, params)
 	desc = "This piece of junk looks like something that could have been used 700 years ago. It feels slightly moist."
 	icon_state = "moistnugget"
 	item_state = "moistnugget"
-	slot_flags = 0 //no ITEM_SLOT_BACK sprite, alas
+	slot_flags = ITEM_SLOT_BACK
 	mag_type = /obj/item/ammo_box/magazine/internal/boltaction
 	can_bayonet = TRUE
 	knife_x_offset = 27
 	knife_y_offset = 13
+	w_class = WEIGHT_CLASS_BULKY
+	weapon_weight = WEAPON_HEAVY
 
 /obj/item/gun/ballistic/rifle/boltaction/enchanted
 	name = "enchanted bolt action rifle"
@@ -74,6 +74,7 @@ obj/item/gun/ballistic/rifle/attackby(obj/item/A, mob/user, params)
 	pin = /obj/item/firing_pin/magic
 	icon_state = "arcane_barrage"
 	item_state = "arcane_barrage"
+	slot_flags = null
 	can_bayonet = FALSE
 	item_flags = NEEDS_PERMIT | DROPDEL | ABSTRACT | NOBLUDGEON
 	flags_1 = NONE
@@ -82,8 +83,8 @@ obj/item/gun/ballistic/rifle/attackby(obj/item/A, mob/user, params)
 	mag_type = /obj/item/ammo_box/magazine/internal/boltaction/enchanted/arcane_barrage
 
 /obj/item/gun/ballistic/rifle/boltaction/enchanted/dropped()
-	. = ..()
 	guns_left = 0
+	..()
 
 /obj/item/gun/ballistic/rifle/boltaction/enchanted/proc/discard_gun(mob/living/user)
 	user.throw_item(pick(oview(7,get_turf(user))))

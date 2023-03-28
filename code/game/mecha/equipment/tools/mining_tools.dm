@@ -17,8 +17,9 @@
 	toolspeed = 0.9
 	var/drill_delay = 7
 	var/drill_level = DRILL_BASIC
+	mech_flags = EXOSUIT_MODULE_RIPLEY | EXOSUIT_MODULE_COMBAT
 
-/obj/item/mecha_parts/mecha_equipment/drill/Initialize()
+/obj/item/mecha_parts/mecha_equipment/drill/Initialize(mapload)
 	. = ..()
 	AddComponent(/datum/component/butchering, 50, 100)
 
@@ -73,14 +74,16 @@
 		drill.occupant_message("<span class='danger'>[src] is too durable to drill through.</span>")
 
 /turf/closed/mineral/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
-	for(var/turf/closed/mineral/M in range(drill.chassis,1))
+	var/turf/T = get_turf(drill.chassis)
+	for(var/turf/closed/mineral/M in RANGE_TURFS(1, T))
 		if(get_dir(drill.chassis,M)&drill.chassis.dir)
 			M.gets_drilled()
 	drill.log_message("Drilled through [src]", LOG_MECHA)
 	drill.move_ores()
 
 /turf/open/floor/plating/asteroid/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
-	for(var/turf/open/floor/plating/asteroid/M in range(1, drill.chassis))
+	var/turf/T = get_turf(drill.chassis)
+	for(var/turf/open/floor/plating/asteroid/M in RANGE_TURFS(1, T))
 		if((get_dir(drill.chassis,M)&drill.chassis.dir) && !M.dug)
 			M.getDug()
 	drill.log_message("Drilled through [src]", LOG_MECHA)
@@ -124,12 +127,17 @@
 		var/obj/item/bodypart/target_part = target.get_bodypart(ran_zone(BODY_ZONE_CHEST))
 		target.apply_damage(10, BRUTE, BODY_ZONE_CHEST, target.run_armor_check(target_part, "melee"))
 
-		//blood splatters
-		var/splatter_dir = get_dir(chassis, target)
-		if(isalien(target))
-			new /obj/effect/temp_visual/dir_setting/bloodsplatter/xenosplatter(target.drop_location(), splatter_dir)
+		//blood splatters and sparks
+		if(issilicon(target)  || isbot(target) || isswarmer(target) || !IS_ORGANIC_LIMB(target_part))
+			do_sparks(rand(1, 3), FALSE, target.drop_location())
 		else
-			new /obj/effect/temp_visual/dir_setting/bloodsplatter(target.drop_location(), splatter_dir)
+			var/splatter_dir = get_dir(chassis, target)
+		
+			if(isalien(target))
+				new /obj/effect/temp_visual/dir_setting/bloodsplatter/xenosplatter(target.drop_location(), splatter_dir)
+			else
+				new /obj/effect/temp_visual/dir_setting/bloodsplatter(target.drop_location(), splatter_dir)
+
 
 		//organs go everywhere
 		if(target_part && prob(10 * drill_level))
@@ -148,15 +156,19 @@
 
 /obj/item/mecha_parts/mecha_equipment/mining_scanner
 	name = "exosuit mining scanner"
-	desc = "Equipment for engineering and combat exosuits. It will automatically check surrounding rock for useful minerals."
+	desc = "Equipment for working exosuits. It will automatically check surrounding rock for useful minerals."
 	icon_state = "mecha_analyzer"
 	selectable = 0
 	equip_cooldown = 15
 	var/scanning_time = 0
+	mech_flags = EXOSUIT_MODULE_RIPLEY
 
-/obj/item/mecha_parts/mecha_equipment/mining_scanner/Initialize()
+/obj/item/mecha_parts/mecha_equipment/mining_scanner/Initialize(mapload)
 	. = ..()
 	START_PROCESSING(SSfastprocess, src)
+
+/obj/item/mecha_parts/mecha_equipment/mining_scanner/can_attach(obj/mecha/M as obj)
+	return (..() && istype(M, /obj/mecha/working))
 
 /obj/item/mecha_parts/mecha_equipment/mining_scanner/process()
 	if(!loc)

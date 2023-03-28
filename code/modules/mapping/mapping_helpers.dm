@@ -12,7 +12,7 @@
 
 	layer = POINT_LAYER
 
-/obj/effect/baseturf_helper/Initialize()
+/obj/effect/baseturf_helper/Initialize(mapload)
 	. = ..()
 	return INITIALIZE_HINT_LATELOAD
 
@@ -92,7 +92,7 @@
 	icon_state = ""
 	var/late = FALSE
 
-/obj/effect/mapping_helpers/Initialize()
+/obj/effect/mapping_helpers/Initialize(mapload)
 	..()
 	return late ? INITIALIZE_HINT_LATELOAD : INITIALIZE_HINT_QDEL
 
@@ -154,6 +154,32 @@
 	else
 		airlock.abandoned = TRUE
 
+//APC helpers
+/obj/effect/mapping_helpers/apc
+
+/obj/effect/mapping_helpers/apc/Initialize(mapload)
+	. = ..()
+	if(!mapload)
+		log_mapping("[src] spawned outside of mapload!")
+		return
+	var/obj/machinery/power/apc/apc = locate(/obj/machinery/power/apc) in loc
+	if(!apc)
+		log_mapping("[src] failed to find an APC at [AREACOORD(src)]")
+	else
+		payload(apc)
+
+/obj/effect/mapping_helpers/apc/proc/payload(obj/machinery/power/apc/payload)
+	return
+
+/obj/effect/mapping_helpers/apc/discharged
+	name = "apc zero change helper"
+	icon_state = "apc_nopower"
+
+/obj/effect/mapping_helpers/apc/discharged/payload(obj/machinery/power/apc/apc)
+	var/obj/item/stock_parts/cell/C = apc.get_cell()
+	C.charge = 0
+	C.update_icon()
+
 
 //needs to do its thing before spawn_rivers() is called
 INITIALIZE_IMMEDIATE(/obj/effect/mapping_helpers/no_lava)
@@ -161,7 +187,7 @@ INITIALIZE_IMMEDIATE(/obj/effect/mapping_helpers/no_lava)
 /obj/effect/mapping_helpers/no_lava
 	icon_state = "no_lava"
 
-/obj/effect/mapping_helpers/no_lava/Initialize()
+/obj/effect/mapping_helpers/no_lava/Initialize(mapload)
 	. = ..()
 	var/turf/T = get_turf(src)
 	T.flags_1 |= NO_LAVA_GEN_1
@@ -187,7 +213,7 @@ INITIALIZE_IMMEDIATE(/obj/effect/mapping_helpers/no_lava)
 		if(target_type && !istype(A,target_type))
 			continue
 		var/cargs = build_args()
-		A.AddComponent(arglist(cargs))
+		A._AddComponent(cargs)
 		qdel(src)
 		return
 

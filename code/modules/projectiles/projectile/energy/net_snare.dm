@@ -3,10 +3,11 @@
 	icon_state = "e_netting"
 	damage = 10
 	damage_type = STAMINA
+	flag = "stamina"
 	hitsound = 'sound/weapons/taserhit.ogg'
 	range = 10
 
-/obj/item/projectile/energy/net/Initialize()
+/obj/item/projectile/energy/net/Initialize(mapload)
 	. = ..()
 	SpinAnimation()
 
@@ -29,10 +30,10 @@
 	light_range = 3
 	anchored = TRUE
 
-/obj/effect/nettingportal/Initialize()
+/obj/effect/nettingportal/Initialize(mapload)
 	. = ..()
 	var/obj/item/beacon/teletarget = null
-	
+
 	for(var/obj/item/beacon/bea in GLOB.teleportbeacons)
 		if(is_eligible(bea) && bea.nettingportal) //is it quick dragnet beacon?
 			teletarget = bea
@@ -41,23 +42,23 @@
 
 /obj/effect/nettingportal/proc/is_eligible(atom/movable/AM)
 	//this code has to be ported in so it is not abused
-	
+
 	var/turf/T = get_turf(AM)
 	if(!T)
 		return FALSE
-	
+
 	var/turf/S = get_turf(src)
-	if (S.z != T.z)	//cannot teleport to another Zlevel
+	if (S.get_virtual_z_level() != T.get_virtual_z_level())	//cannot teleport to another Zlevel
 		return FALSE
 	var/area/A = get_area(T)
-	if(!A || A.noteleport)
+	if(!A || A.teleport_restriction)
 		return FALSE
 	return TRUE
 
 /obj/effect/nettingportal/proc/pop(teletarget)
 	if(teletarget)
 		for(var/mob/living/L in get_turf(src))
-			do_teleport(L, teletarget, 2, channel = TELEPORT_CHANNEL_BLUESPACE)//teleport what's in the tile to the beacon
+			do_teleport(L, teletarget, 0, channel = TELEPORT_CHANNEL_BLUESPACE)//teleport what's in the tile to the beacon
 	else
 		for(var/mob/living/L in get_turf(src))
 			do_teleport(L, L, 15, channel = TELEPORT_CHANNEL_BLUESPACE) //Otherwise it just warps you off somewhere.
@@ -82,8 +83,8 @@
 		new/obj/item/restraints/legcuffs/beartrap/energy(get_turf(loc))
 	else if(iscarbon(target))
 		var/obj/item/restraints/legcuffs/beartrap/B = new /obj/item/restraints/legcuffs/beartrap/energy(get_turf(target))
-		B.Crossed(target)
-	..()
+		B.spring_trap(null, target)
+	. = ..()
 
 /obj/item/projectile/energy/trap/on_range()
 	new /obj/item/restraints/legcuffs/beartrap/energy(loc)
@@ -103,10 +104,14 @@
 		qdel(src)
 	if(iscarbon(target))
 		var/obj/item/restraints/legcuffs/beartrap/B = new /obj/item/restraints/legcuffs/beartrap/energy/cyborg(get_turf(target))
-		B.Crossed(target)
+		B.spring_trap(null, target)
 	QDEL_IN(src, 10)
-	..()
+	. = ..()
 
 /obj/item/projectile/energy/trap/cyborg/on_range()
+	do_sparks(1, TRUE, src)
+	qdel(src)
+
+/obj/item/projectile/energy/trap/cyborg/emp_act(severity)
 	do_sparks(1, TRUE, src)
 	qdel(src)

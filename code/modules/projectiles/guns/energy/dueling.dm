@@ -1,6 +1,6 @@
 #define DUEL_IDLE 1
 #define DUEL_PREPARATION 2
-#define DUEL_READY 3 
+#define DUEL_READY 3
 #define DUEL_COUNTDOWN 4
 #define DUEL_FIRING 5
 
@@ -142,7 +142,7 @@
 	var/datum/duel/duel
 	var/mutable_appearance/setting_overlay
 
-/obj/item/gun/energy/dueling/Initialize()
+/obj/item/gun/energy/dueling/Initialize(mapload)
 	. = ..()
 	setting_overlay = mutable_appearance(icon,setting_iconstate())
 	add_overlay(setting_overlay)
@@ -184,9 +184,9 @@
 
 /obj/item/gun/energy/dueling/Destroy()
 	. = ..()
-	if(duel.gun_A == src)
+	if(duel?.gun_A == src)
 		duel.gun_A = null
-	if(duel.gun_B == src)
+	if(duel?.gun_B == src)
 		duel.gun_B = null
 	duel = null
 
@@ -219,7 +219,7 @@
 	else
 		duel.fired[src] = TRUE
 		. = ..()
-	
+
 /obj/item/gun/energy/dueling/before_firing(target,user)
 	var/obj/item/ammo_casing/energy/duel/D = chambered
 	D.setting = setting
@@ -253,7 +253,7 @@
 	D.setting = setting
 	D.update_icon()
 
-/obj/item/ammo_casing/energy/duel/fire_casing(atom/target, mob/living/user, params, distro, quiet, zone_override, spread, atom/fired_from)
+/obj/item/ammo_casing/energy/duel/fire_casing(atom/target, mob/living/user, params, distro, quiet, zone_override, spread, spread_multiplier = 1, atom/fired_from)
 	. = ..()
 	var/obj/effect/temp_visual/dueling_chaff/C = new(get_turf(user))
 	C.setting = setting
@@ -297,7 +297,7 @@
 	var/mob/living/L = target
 	if(!istype(target))
 		return BULLET_ACT_BLOCK
-	
+
 	var/obj/item/bodypart/B = L.get_bodypart(BODY_ZONE_HEAD)
 	B.dismember()
 	qdel(B)
@@ -307,14 +307,10 @@
 	name = "dueling pistol case"
 	desc = "Let's solve this like gentlespacemen."
 	icon_state = "medalbox+l"
-	item_state = "syringe_kit"
-	lefthand_file = 'icons/mob/inhands/equipment/medical_lefthand.dmi'
-	righthand_file = 'icons/mob/inhands/equipment/medical_righthand.dmi'
+	item_state = "medalbox+l"
+	base_icon_state = "medalbox"
 	w_class = WEIGHT_CLASS_NORMAL
 	req_access = list(ACCESS_CAPTAIN)
-	icon_locked = "medalbox+l"
-	icon_closed = "medalbox"
-	icon_broken = "medalbox+b"
 
 /obj/item/storage/lockbox/dueling/ComponentInitialize()
 	. = ..()
@@ -322,18 +318,6 @@
 	STR.max_w_class = WEIGHT_CLASS_SMALL
 	STR.max_items = 2
 	STR.can_hold = typecacheof(list(/obj/item/gun/energy/dueling))
-
-/obj/item/storage/lockbox/dueling/update_icon()
-	cut_overlays()
-	var/locked = SEND_SIGNAL(src, COMSIG_IS_STORAGE_LOCKED)
-	if(locked)
-		icon_state = "medalbox+l"
-	else
-		icon_state = "medalbox"
-		if(open)
-			icon_state += "open"
-		if(broken)
-			icon_state += "+b"
 
 /obj/item/storage/lockbox/dueling/PopulateContents()
 	. = ..()

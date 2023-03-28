@@ -105,7 +105,9 @@ export const Vending = (props, context) => {
     ];
   }
   return (
-    <Window resizable>
+    <Window
+      width={400}
+      height={550}>
       <Window.Content scrollable>
         {!!data.onstation && (
           <Section title="User">
@@ -132,7 +134,7 @@ export const Vending = (props, context) => {
                 key={product.name}
                 custom={custom}
                 product={product}
-                productStock={data.stock[product.name]} />
+                productStock={data.stock[product.path]} />
             ))}
           </Table>
         </Section>

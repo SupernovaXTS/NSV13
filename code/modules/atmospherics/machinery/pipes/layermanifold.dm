@@ -8,9 +8,9 @@
 	pipe_flags = PIPING_ALL_LAYER | PIPING_DEFAULT_LAYER_ONLY | PIPING_CARDINAL_AUTONORMALIZE
 	piping_layer = PIPING_LAYER_DEFAULT
 	device_type = 0
-	volume = 260
 	construction_type = /obj/item/pipe/binary
 	pipe_state = "manifoldlayer"
+	paintable = FALSE
 	FASTDMM_PROP(\
 		pipe_type = PIPE_TYPE_STRAIGHT,\
 		pipe_interference_group = list("atmos-1","atmos-2","atmos-3")\
@@ -19,7 +19,8 @@
 	var/list/front_nodes
 	var/list/back_nodes
 
-/obj/machinery/atmospherics/pipe/layer_manifold/Initialize()
+/obj/machinery/atmospherics/pipe/layer_manifold/Initialize(mapload)
+	volume = 350 // was previously 280 which was 8 ports but now this thing has 10
 	front_nodes = list()
 	back_nodes = list()
 	icon_state = "manifoldlayer_center"
@@ -35,13 +36,14 @@
 	back_nodes = null
 	nodes = list()
 	for(var/obj/machinery/atmospherics/A in needs_nullifying)
-		A.disconnect(src)
-		A.build_network()
+		if(A != null && src != null) //if it's already null why are we doing this? The answer is byond... it'll always find a way
+			A.disconnect(src)
+			SSair.add_to_rebuild_queue(A)
 
 /obj/machinery/atmospherics/pipe/layer_manifold/proc/get_all_connected_nodes()
 	return front_nodes + back_nodes + nodes
 
-/obj/machinery/atmospherics/pipe/layer_manifold/update_icon()	//HEAVILY WIP FOR UPDATE ICONS!!
+/obj/machinery/atmospherics/pipe/layer_manifold/update_icon()
 	cut_overlays()
 	layer = initial(layer) + (PIPING_LAYER_MAX * PIPING_LAYER_LCHANGE)	//This is above everything else.
 
@@ -74,9 +76,9 @@
 
 /obj/machinery/atmospherics/pipe/layer_manifold/SetInitDirections()
 	switch(dir)
-		if(NORTH || SOUTH)
+		if(NORTH, SOUTH)
 			initialize_directions = NORTH|SOUTH
-		if(EAST || WEST)
+		if(EAST, WEST)
 			initialize_directions = EAST|WEST
 
 /obj/machinery/atmospherics/pipe/layer_manifold/isConnectable(obj/machinery/atmospherics/target, given_layer)

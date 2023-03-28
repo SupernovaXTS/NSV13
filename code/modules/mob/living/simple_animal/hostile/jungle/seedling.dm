@@ -17,7 +17,9 @@
 	health = 100
 	melee_damage = 30
 	pixel_x = -16
+	base_pixel_x = -16
 	pixel_y = -14
+	base_pixel_y = -14
 	minimum_distance = 3
 	move_to_delay = 20
 	vision_range = 9
@@ -67,7 +69,7 @@
 	status_type = STATUS_EFFECT_MULTIPLE
 	alert_type = null
 	tick_interval = 1
-	var/obj/screen/seedling/seedling_screen_object
+	var/atom/movable/screen/seedling/seedling_screen_object
 	var/atom/target
 
 
@@ -79,7 +81,7 @@
 
 /datum/status_effect/seedling_beam_indicator/on_apply()
 	if(owner.client)
-		seedling_screen_object = new /obj/screen/seedling()
+		seedling_screen_object = new /atom/movable/screen/seedling()
 		owner.client.screen += seedling_screen_object
 	tick()
 	return ..()
@@ -91,12 +93,12 @@
 	return ..()
 
 /datum/status_effect/seedling_beam_indicator/tick()
-	var/target_angle = Get_Angle(owner, target)
+	var/target_angle = get_angle(owner, target)
 	var/matrix/final = matrix()
 	final.Turn(target_angle)
 	seedling_screen_object.transform = final
 
-/obj/screen/seedling
+/atom/movable/screen/seedling
 	icon = 'icons/mob/jungle/arachnid.dmi'
 	icon_state = "seedling_beam_indicator"
 	screen_loc = "CENTER:-16,CENTER:-16"
@@ -119,7 +121,7 @@
 /mob/living/simple_animal/hostile/jungle/seedling/proc/WarmupAttack()
 	if(combatant_state == SEEDLING_STATE_NEUTRAL)
 		combatant_state = SEEDLING_STATE_WARMUP
-		walk(src,0)
+		SSmove_manager.stop_looping(src)
 		update_icons()
 		var/target_dist = get_dist(src,target)
 		var/living_target_check = isliving(target)
@@ -145,7 +147,7 @@
 
 /mob/living/simple_animal/hostile/jungle/seedling/proc/Beamu(mob/living/living_target, beam_id = 0)
 	if(combatant_state == SEEDLING_STATE_ACTIVE && living_target && beam_id == solar_beam_identifier)
-		if(living_target.z == z)
+		if(living_target.get_virtual_z_level() == get_virtual_z_level())
 			update_icons()
 			var/obj/effect/temp_visual/solarbeam_killsat/S = new (get_turf(src))
 			var/matrix/starting = matrix()

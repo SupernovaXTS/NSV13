@@ -33,12 +33,11 @@ Possible to do for anyone motivated enough:
 	icon_state = "holopad0"
 	layer = LOW_OBJ_LAYER
 	plane = FLOOR_PLANE
-	flags_1 = HEAR_1
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 5
 	active_power_usage = 100
 	max_integrity = 300
-	armor = list("melee" = 50, "bullet" = 20, "laser" = 20, "energy" = 20, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 0)
+	armor = list("melee" = 50, "bullet" = 20, "laser" = 20, "energy" = 20, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 0, "stamina" = 0)
 	circuit = /obj/item/circuitboard/machine/holopad
 	var/list/masters //List of living mobs that use the holopad
 	var/list/holorays //Holoray-mob link.
@@ -61,6 +60,10 @@ Possible to do for anyone motivated enough:
 	var/offset = FALSE
 	var/on_network = TRUE
 
+/obj/machinery/holopad/Initialize(mapload)
+	. = ..()
+	become_hearing_sensitive()
+
 /obj/machinery/holopad/tutorial
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
 	flags_1 = NODECONSTRUCT_1
@@ -80,7 +83,7 @@ Possible to do for anyone motivated enough:
 /obj/machinery/holopad/tutorial/attack_hand(mob/user)
 	if(!istype(user))
 		return
-	if(user.incapacitated() || !is_operational())
+	if(user.incapacitated() || !is_operational)
 		return
 	if(replay_mode)
 		replay_stop()
@@ -93,7 +96,7 @@ Possible to do for anyone motivated enough:
 	if(!replay_mode && (disk && disk.record))
 		replay_start()
 
-/obj/machinery/holopad/Initialize()
+/obj/machinery/holopad/Initialize(mapload)
 	. = ..()
 	if(on_network)
 		holopads += src
@@ -121,9 +124,9 @@ Possible to do for anyone motivated enough:
 
 /obj/machinery/holopad/power_change()
 	if (powered())
-		stat &= ~NOPOWER
+		set_machine_stat(machine_stat & ~NOPOWER)
 	else
-		stat |= NOPOWER
+		set_machine_stat(machine_stat | NOPOWER)
 		if(replay_mode)
 			replay_stop()
 		if(record_mode)
@@ -145,7 +148,7 @@ Possible to do for anyone motivated enough:
 /obj/machinery/holopad/examine(mob/user)
 	. = ..()
 	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Current projection range: <b>[holo_range]</b> units.<span>"
+		. += "<span class='notice'>The status display reads: Current projection range: <b>[holo_range]</b> units.</span>"
 
 /obj/machinery/holopad/attackby(obj/item/P, mob/user, params)
 	if(default_deconstruction_screwdriver(user, "holopad_open", "holopad0", P))
@@ -179,7 +182,7 @@ Possible to do for anyone motivated enough:
 	if(!istype(user))
 		return
 
-	if(outgoing_call || user.incapacitated() || !is_operational())
+	if(outgoing_call || user.incapacitated() || !is_operational)
 		return
 
 	user.set_machine(src)
@@ -228,7 +231,6 @@ Possible to do for anyone motivated enough:
 
 	var/datum/browser/popup = new(user, "holopad", name, 300, 175)
 	popup.set_content(dat)
-	popup.set_title_image(user.browse_rsc_icon(src.icon, src.icon_state))
 	popup.open()
 
 //Stop ringing the AI!!
@@ -241,7 +243,7 @@ Possible to do for anyone motivated enough:
 	if(..() || isAI(usr))
 		return
 	add_fingerprint(usr)
-	if(!is_operational())
+	if(!is_operational)
 		return
 	if (href_list["AIrequest"])
 		if(last_request + 200 < world.time)
@@ -351,7 +353,7 @@ Possible to do for anyone motivated enough:
 			if(!istype(AI))
 				AI = null
 
-			if(!is_operational() || !validate_user(master))
+			if(!is_operational || !validate_user(master))
 				clear_holo(master)
 
 	if(outgoing_call)
@@ -374,11 +376,15 @@ Possible to do for anyone motivated enough:
 	update_icon()
 
 /obj/machinery/holopad/proc/activate_holo(mob/living/user)
+	if ( user.overmap_ship ) // NSV13 - Fixes an overmap access by holopad exploit
+		var/obj/structure/overmap/playerShip = user.overmap_ship
+		playerShip.stop_piloting( user )
+
 	var/mob/living/silicon/ai/AI = user
 	if(!istype(AI))
 		AI = null
 
-	if(is_operational() && (!AI || AI.eyeobj.loc == loc))//If the projector has power and client eye is on it
+	if(is_operational && (!AI || AI.eyeobj.loc == loc))//If the projector has power and client eye is on it
 		if (AI && istype(AI.current, /obj/machinery/holopad))
 			to_chat(user, "<span class='danger'>ERROR:</span> \black Image feed in progress.")
 			return
@@ -411,17 +417,19 @@ Possible to do for anyone motivated enough:
 
 /*This is the proc for special two-way communication between AI and holopad/people talking near holopad.
 For the other part of the code, check silicon say.dm. Particularly robot talk.*/
-/obj/machinery/holopad/Hear(message, atom/movable/speaker, datum/language/message_language, raw_message, radio_freq, list/spans, message_mode)
+/obj/machinery/holopad/Hear(message, atom/movable/speaker, datum/language/message_language, raw_message, radio_freq, list/spans, list/message_mods = list())
 	. = ..()
 	if(speaker && LAZYLEN(masters) && !radio_freq)//Master is mostly a safety in case lag hits or something. Radio_freq so AIs dont hear holopad stuff through radios.
 		for(var/mob/living/silicon/ai/master in masters)
 			if(masters[master] && speaker != master)
-				master.relay_speech(message, speaker, message_language, raw_message, radio_freq, spans, message_mode)
+				master.relay_speech(message, speaker, message_language, raw_message, radio_freq, spans, message_mods)
 
 	for(var/I in holo_calls)
 		var/datum/holocall/HC = I
 		if(HC.connected_holopad == src && speaker != HC.hologram)
-			HC.user.Hear(message, speaker, message_language, raw_message, radio_freq, spans, message_mode)
+			HC.user.Hear(message, speaker, message_language, raw_message, radio_freq, spans, message_mods)
+			if(HC.user.should_show_chat_message(speaker, message_language, FALSE, is_heard = TRUE))
+				create_chat_message(speaker, message_language, list(HC.user), raw_message, spans, message_mods)
 
 	if(outgoing_call && speaker == outgoing_call.user)
 		outgoing_call.hologram.say(raw_message)
@@ -498,7 +506,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 //Can we display holos there
 //Area check instead of line of sight check because this is a called a lot if AI wants to move around.
 /obj/machinery/holopad/proc/validate_location(turf/T,check_los = FALSE)
-	if(T.z == z && get_dist(T, src) <= holo_range && T.loc == get_area(src))
+	if(T.get_virtual_z_level() == get_virtual_z_level() && get_dist(T, src) <= holo_range && T.loc == get_area(src))
 		return TRUE
 	else
 		return FALSE
@@ -514,7 +522,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 			else
 				transfered = TRUE
 		//All is good.
-		holo.forceMove(new_turf)
+		holo.abstract_move(new_turf)
 		if(!transfered)
 			update_holoray(user,new_turf)
 	return TRUE
@@ -675,6 +683,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 	Impersonation = null
 	if(!QDELETED(HC))
 		HC.Disconnect(HC.calling_holopad)
+	HC = null
 	return ..()
 
 /obj/effect/overlay/holo_pad_hologram/Process_Spacemove(movement_dir = 0)

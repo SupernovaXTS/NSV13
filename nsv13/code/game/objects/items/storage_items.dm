@@ -23,3 +23,26 @@
 	new /obj/item/ammo_casing/shotgun/beanbag(src)
 	new /obj/item/ammo_casing/shotgun/beanbag(src)
 	new /obj/item/ammo_casing/shotgun/beanbag(src)
+
+/obj/item/storage/box/cookie
+	name = "box of cookies"
+	desc = "It contains a few cookies for good patients."
+
+/obj/item/storage/box/cookie/PopulateContents()
+	new /obj/item/reagent_containers/food/snacks/cookie( src )
+	new /obj/item/reagent_containers/food/snacks/cookie( src )
+	new /obj/item/reagent_containers/food/snacks/cookie( src )
+	new /obj/item/reagent_containers/food/snacks/oatmealcookie( src )
+	new /obj/item/reagent_containers/food/snacks/oatmealcookie( src )
+	new /obj/item/reagent_containers/food/snacks/sugarcookie/spookyskull( src )
+	new /obj/item/reagent_containers/food/snacks/sugarcookie/spookyskull( src )
+
+/obj/item/storage/box/beakers/large_mix
+	name = "box of beakers"
+	illustration = "beaker"
+
+/obj/item/storage/box/beakers/PopulateContents()
+	for(var/i in 1 to 2)
+		new /obj/item/reagent_containers/glass/beaker/large( src )
+	for(var/i in 1 to 5)
+		new /obj/item/reagent_containers/glass/beaker( src )

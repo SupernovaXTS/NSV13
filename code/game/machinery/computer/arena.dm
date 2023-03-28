@@ -117,7 +117,7 @@
 		return
 	var/datum/map_template/M = arena_templates[arena_template]
 	if(!M)
-		to_chat(user,"<span class='warning'>No such arena</span>")
+		to_chat(user,"<span class='warning'>No such arena.</span>")
 		return
 	clear_arena() //Clear current arena
 	var/turf/A = get_landmark_turf(ARENA_CORNER_A)
@@ -187,11 +187,11 @@
 	to_chat(user,"[ckey] removed from [team] team.")
 
 /obj/machinery/computer/arena/proc/spawn_member(obj/machinery/arena_spawn/spawnpoint,ckey,team)
-	var/mob/oldbody = get_mob_by_key(ckey)
+	var/mob/oldbody = get_mob_by_ckey(ckey)
 	if(!isobserver(oldbody))
 		return
 	var/mob/living/carbon/human/M = new/mob/living/carbon/human(get_turf(spawnpoint))
-	oldbody.client.prefs.copy_to(M)
+	oldbody.client.prefs.active_character.copy_to(M)
 	M.set_species(/datum/species/human) // Could use setting per team
 	M.equipOutfit(outfits[team] ? outfits[team] : default_outfit)
 	M.faction += team //In case anyone wants to add team based stuff to arena special effects
@@ -217,7 +217,7 @@
 	. = list()
 	for(var/team in team_keys)
 		for(var/key in team_keys[team])
-			var/mob/M = get_mob_by_key(key)
+			var/mob/M = get_mob_by_ckey(key)
 			if(M)
 				. += M
 
@@ -284,6 +284,11 @@
 		toggle_spawn(user)
 	if(href_list["start"])
 		start_match(user)
+	if(href_list["follow"])
+		var/mob/observed_team_member = locate(href_list["follow"]) in GLOB.mob_list
+		if(observed_team_member && GLOB.admin_datums[user.client?.ckey])
+			var/datum/admins/D = GLOB.admin_datums[user.client?.ckey]
+			D.admin_follow(observed_team_member)
 	if(href_list["team_action"])
 		var/team = href_list["team"]
 		switch(href_list["team_action"])
@@ -314,7 +319,7 @@
 
 /obj/machinery/computer/arena/proc/load_random_arena(mob/user)
 	if(!length(arena_templates))
-		to_chat(user,"<span class='warning'>No arenas present</span>")
+		to_chat(user,"<span class='warning'>No arenas present.</span>")
 		return
 	var/picked = pick(arena_templates)
 	load_arena(picked,user)
@@ -336,7 +341,7 @@
 		dat += "<ul>"
 		for(var/ckey in team_keys[team])
 			var/player_status = "Not Present"
-			var/mob/M = get_mob_by_key(ckey)
+			var/mob/M = get_mob_by_ckey(ckey)
 			if(M)
 				//Should define waiting room upper/lower corner and check if they're there instead of generic live/dead check
 				if(isobserver(M))
@@ -344,7 +349,7 @@
 				else
 					player_status = M.stat == DEAD ? "Dead" : "Alive"
 				dat += "<li>[ckey] - [player_status] - "
-				dat += "<a href='?_src_=holder;[HrefToken(TRUE)];adminplayerobservefollow=[REF(M)]'>FLW</a>"
+				dat += "<a href='?src=[REF(src)];follow=[REF(M)]'>FLW</a>"
 				dat += "<a href='?src=[REF(src)];member_action=remove;team=[team];ckey=[ckey]'>Remove</a>"
 				//Add more per player features here
 				dat += "</li>"

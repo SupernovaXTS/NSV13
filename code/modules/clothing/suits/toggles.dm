@@ -5,7 +5,7 @@
 	var/obj/item/clothing/head/hooded/hood
 	var/hoodtype = /obj/item/clothing/head/hooded/winterhood //so the chaplain hoodie or other hoodies can override this
 
-/obj/item/clothing/suit/hooded/Initialize()
+/obj/item/clothing/suit/hooded/Initialize(mapload)
 	. = ..()
 	MakeHood()
 
@@ -24,11 +24,11 @@
 	ToggleHood()
 
 /obj/item/clothing/suit/hooded/item_action_slot_check(slot, mob/user)
-	if(slot == SLOT_WEAR_SUIT)
+	if(slot == ITEM_SLOT_OCLOTHING)
 		return 1
 
 /obj/item/clothing/suit/hooded/equipped(mob/user, slot)
-	if(slot != SLOT_WEAR_SUIT)
+	if(slot != ITEM_SLOT_OCLOTHING)
 		RemoveHood()
 	..()
 
@@ -59,7 +59,7 @@
 			if(H.head)
 				to_chat(H, "<span class='warning'>You're already wearing something on your head!</span>")
 				return
-			else if(H.equip_to_slot_if_possible(hood,SLOT_HEAD,0,0,1))
+			else if(H.equip_to_slot_if_possible(hood,ITEM_SLOT_HEAD,0,0,1))
 				suittoggled = TRUE
 				src.icon_state = "[initial(icon_state)]_t"
 				H.update_inv_wear_suit()
@@ -85,7 +85,7 @@
 
 /obj/item/clothing/head/hooded/equipped(mob/user, slot)
 	..()
-	if(slot != SLOT_HEAD)
+	if(slot != ITEM_SLOT_HEAD)
 		if(suit)
 			suit.RemoveHood()
 		else
@@ -94,16 +94,14 @@
 //Toggle exosuits for different aesthetic styles (hoodies, suit jacket buttons, etc)
 
 /obj/item/clothing/suit/toggle/AltClick(mob/user)
-	..()
-	if(!user.canUseTopic(src, BE_CLOSE, ismonkey(user)))
-		return
-	else
-		suit_toggle(user)
+	SEND_SIGNAL(src, COMSIG_CLICK_ALT, user)
 
 /obj/item/clothing/suit/toggle/ui_action_click()
 	suit_toggle()
 
-/obj/item/clothing/suit/toggle/proc/suit_toggle()
+/obj/item/clothing/suit/toggle/verb/suit_toggle()
+	set name = "Toggle Suit Style"
+	set category = "Object"
 	set src in usr
 
 	if(!can_use(usr))
@@ -112,9 +110,13 @@
 	to_chat(usr, "<span class='notice'>You toggle [src]'s [togglename].</span>")
 	if(src.suittoggled)
 		src.icon_state = "[initial(icon_state)]"
+		if(src.worn_icon_state)
+			src.worn_icon_state = "[initial(icon_state)]"
 		src.suittoggled = FALSE
 	else if(!src.suittoggled)
 		src.icon_state = "[initial(icon_state)]_t"
+		if(src.worn_icon_state)
+			src.worn_icon_state = "[initial(icon_state)]_t"
 		src.suittoggled = TRUE
 	usr.update_inv_wear_suit()
 	for(var/X in actions)
@@ -126,15 +128,16 @@
 	. += "Alt-click on [src] to toggle the [togglename]."
 
 //Hardsuit toggle code
-/obj/item/clothing/suit/space/hardsuit/Initialize()
+/obj/item/clothing/suit/space/hardsuit/Initialize(mapload)
 	MakeHelmet()
 	. = ..()
 
 /obj/item/clothing/suit/space/hardsuit/Destroy()
-	if(helmet)
+	if(!QDELETED(helmet))
 		helmet.suit = null
 		qdel(helmet)
-	qdel(jetpack)
+		helmet = null
+	QDEL_NULL(jetpack)
 	return ..()
 
 /obj/item/clothing/head/helmet/space/hardsuit/Destroy()
@@ -157,7 +160,7 @@
 /obj/item/clothing/suit/space/hardsuit/equipped(mob/user, slot)
 	if(!helmettype)
 		return
-	if(slot != SLOT_WEAR_SUIT)
+	if(slot != ITEM_SLOT_OCLOTHING)
 		RemoveHelmet()
 	..()
 
@@ -194,7 +197,7 @@
 			if(H.head)
 				to_chat(H, "<span class='warning'>You're already wearing something on your head!</span>")
 				return
-			else if(H.equip_to_slot_if_possible(helmet,SLOT_HEAD,0,0,1))
+			else if(H.equip_to_slot_if_possible(helmet,ITEM_SLOT_HEAD,0,0,1))
 				to_chat(H, "<span class='notice'>You engage the helmet on the hardsuit.</span>")
 				suittoggled = TRUE
 				H.update_inv_wear_suit()

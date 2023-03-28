@@ -121,6 +121,15 @@ GLOBAL_LIST_INIT(diamond_recipes, list ( \
 	recipes = GLOB.diamond_recipes
 	. = ..()
 
+/obj/item/stack/sheet/mineral/diamond/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/diamond/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/diamond/five
+	amount = 5
+
 /*
  * Uranium
  */
@@ -141,11 +150,23 @@ GLOBAL_LIST_INIT(uranium_recipes, list ( \
 	new/datum/stack_recipe("uranium tile", /obj/item/stack/tile/mineral/uranium, 1, 4, 20), \
 	new/datum/stack_recipe("Nuke Statue", /obj/structure/statue/uranium/nuke, 5, one_per_turf = 1, on_floor = 1), \
 	new/datum/stack_recipe("Engineer Statue", /obj/structure/statue/uranium/eng, 5, one_per_turf = 1, on_floor = 1), \
+	null, \
+	new/datum/stack_recipe("depleted uranium directional window", /obj/structure/window/depleteduranium/unanchored, 1, time = 0, on_floor = TRUE, window_checks = TRUE), \
+	new/datum/stack_recipe("depleted uranium fulltile window", /obj/structure/window/depleteduranium/fulltile/unanchored, 2, time = 0, on_floor = TRUE, window_checks = TRUE) \
 	))
 
 /obj/item/stack/sheet/mineral/uranium/Initialize(mapload, new_amount, merge = TRUE)
 	recipes = GLOB.uranium_recipes
 	. = ..()
+
+/obj/item/stack/sheet/mineral/uranium/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/uranium/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/uranium/five
+	amount = 5
 
 /*
  * Plasma
@@ -190,6 +211,15 @@ GLOBAL_LIST_INIT(plasma_recipes, list ( \
 	atmos_spawn_air("plasma=[amount*10];TEMP=[exposed_temperature]")
 	qdel(src)
 
+/obj/item/stack/sheet/mineral/plasma/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/plasma/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/plasma/five
+	amount = 5
+
 /*
  * Gold
  */
@@ -218,6 +248,15 @@ GLOBAL_LIST_INIT(gold_recipes, list ( \
 /obj/item/stack/sheet/mineral/gold/Initialize(mapload, new_amount, merge = TRUE)
 	recipes = GLOB.gold_recipes
 	. = ..()
+
+/obj/item/stack/sheet/mineral/gold/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/gold/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/gold/five
+	amount = 5
 
 /*
  * Silver
@@ -248,6 +287,15 @@ GLOBAL_LIST_INIT(silver_recipes, list ( \
 	recipes = GLOB.silver_recipes
 	. = ..()
 
+/obj/item/stack/sheet/mineral/silver/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/silver/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/silver/five
+	amount = 5
+
 /*
  * Copper
  */
@@ -272,6 +320,15 @@ GLOBAL_LIST_INIT(copper_recipes, list ( \
 	recipes = GLOB.copper_recipes
 	. = ..()
 
+/obj/item/stack/sheet/mineral/copper/fifty
+	amount = 50
+
+/obj/item/stack/sheet/mineral/copper/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/copper/five
+	amount = 5
+
 /*
  * Clown
  */
@@ -295,6 +352,9 @@ GLOBAL_LIST_INIT(bananium_recipes, list ( \
 /obj/item/stack/sheet/mineral/bananium/Initialize(mapload, new_amount, merge = TRUE)
 	recipes = GLOB.bananium_recipes
 	. = ..()
+
+/obj/item/stack/sheet/mineral/bananium/five
+	amount = 5
 
 /*
  * Titanium
@@ -324,6 +384,12 @@ GLOBAL_LIST_INIT(titanium_recipes, list ( \
 
 /obj/item/stack/sheet/mineral/titanium/fifty
 	amount = 50
+
+/obj/item/stack/sheet/mineral/titanium/twenty
+	amount = 20
+
+/obj/item/stack/sheet/mineral/titanium/five
+	amount = 5
 
 
 /*
@@ -383,7 +449,7 @@ GLOBAL_LIST_INIT(snow_recipes, list ( \
  * Adamantine
  */
 GLOBAL_LIST_INIT(adamantine_recipes, list(
-	new /datum/stack_recipe("incomplete servant golem shell", /obj/item/golem_shell/servant, req_amount=1, res_amount=1),
+	new /datum/stack_recipe("incomplete servant golem shell", /obj/item/golem_shell/servant, req_amount=25, res_amount=1),
 	))
 
 /obj/item/stack/sheet/mineral/adamantine
@@ -466,3 +532,22 @@ GLOBAL_LIST_INIT(abductor_recipes, list ( \
 
 /obj/item/stack/sheet/mineral/coal/ten
 	amount = 10
+
+/*
+ * Wax
+ */
+/obj/item/stack/sheet/mineral/wax
+	name = "wax"
+	icon_state = "sheet-wax"
+	item_state = "sheet-wax"
+	singular_name = "wax block"
+	force = 1
+	throwforce = 2
+	grind_results = list(/datum/reagent/consumable/honey = 20)
+	merge_type = /obj/item/stack/sheet/mineral/wax
+
+GLOBAL_LIST_INIT(wax_recipes, list (new/datum/stack_recipe("Wax tile", /obj/item/stack/tile/mineral/wax, 1, 4, 20)))
+
+/obj/item/stack/sheet/mineral/wax/Initialize(mapload, new_amount, merge = TRUE)
+	recipes = GLOB.wax_recipes
+	. = ..()

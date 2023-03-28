@@ -4,6 +4,7 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 	name = "Clockwork Slab"
 	desc = "A mechanical-looking device filled with intricate cogs that swirl to their own accord."
 	clockwork_desc = "A beautiful work of art, harnessing mechanical energy for a variety of useful powers."
+	item_flags = NOBLUDGEON
 	icon_state = "dread_ipad"
 	lefthand_file = 'icons/mob/inhands/antag/clockwork_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/antag/clockwork_righthand.dmi'
@@ -42,7 +43,9 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 	//For trap linkage
 	var/datum/component/clockwork_trap/buffer
 
-/obj/item/clockwork/clockwork_slab/Initialize()
+/obj/item/clockwork/clockwork_slab/Initialize(mapload)
+	if(!length(GLOB.clockcult_all_scriptures))
+		generate_clockcult_scriptures()
 	var/pos = 1
 	cogs = GLOB.installed_integration_cogs
 	GLOB.clockwork_slabs += src
@@ -54,7 +57,12 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 		bind_spell(null, default_script, pos++)
 	..()
 
+/obj/item/clockwork/clockwork_slab/Destroy()
+	GLOB.clockwork_slabs -= src
+	return ..()
+
 /obj/item/clockwork/clockwork_slab/dropped(mob/user)
+	..()
 	//Clear quickbinds
 	for(var/datum/action/innate/clockcult/quick_bind/script in quick_bound_scriptures)
 		script.Remove(user)
@@ -62,10 +70,9 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 		active_scripture.end_invokation()
 	if(buffer)
 		buffer = null
-	. = ..()
 
 /obj/item/clockwork/clockwork_slab/pickup(mob/user)
-	. = ..()
+	..()
 	if(!is_servant_of_ratvar(user))
 		return
 	//Grant quickbound spells
@@ -127,12 +134,15 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 		return
 	ui_interact(user)
 
-/obj/item/clockwork/clockwork_slab/ui_interact(mob/user, ui_key, datum/tgui/ui, force_open, datum/tgui/master_ui, datum/ui_state/state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+/obj/item/clockwork/clockwork_slab/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "ClockworkSlab", name, 860, 700, master_ui, state)
+		ui = new(user, src, "ClockworkSlab")
 		ui.set_autoupdate(TRUE)
 		ui.open()
+
+/obj/item/clockwork/clockwork_slab/ui_state(mob/user)
+	return GLOB.clockcult_state
 
 /obj/item/clockwork/clockwork_slab/ui_data(mob/user)
 	//Data
@@ -141,10 +151,6 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 	data["vitality"] = GLOB.clockcult_vitality
 	data["power"] = GLOB.clockcult_power
 	data["scriptures"] = list()
-	//Generate Scriptures Infomation
-	var/datum/antagonist/servant_of_ratvar/servant_datum = is_servant_of_ratvar(user)
-	if(!servant_datum)
-		return data
 	//2 scriptures accessable at the same time will cause issues
 	for(var/scripture_name in GLOB.clockcult_all_scriptures)
 		var/datum/clockcult/scripture/scripture = GLOB.clockcult_all_scriptures[scripture_name]
@@ -177,6 +183,9 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 				if(S.power_cost > GLOB.clockcult_power)
 					to_chat(M, "<span class='neovgre'>You need [S.power_cost]W to invoke [S.name].</span>")
 					return FALSE
+				if(S.vitality_cost > GLOB.clockcult_vitality)
+					to_chat(M, "<span class='neovgre'>You need [S.vitality_cost] vitality to invoke [S.name].</span>")
+					return FALSE
 				var/datum/clockcult/scripture/new_scripture = new S.type()
 				//Create a new scripture temporarilly to process, when it's done it will be qdeleted.
 				new_scripture.qdel_on_completion = TRUE
@@ -185,6 +194,7 @@ GLOBAL_LIST_INIT(clockwork_slabs, list())
 				if(cogs >= S.cogs_required)
 					cogs -= S.cogs_required
 					to_chat(M, "<span class='brass'>You unlocked [S.name]. It can now be invoked and quickbound through your slab.</span>")
+					log_game("[S.name] purchased by [M.ckey]/[M.name] the [M.job] for [S.cogs_required] cogs, [cogs] cogs remaining.")
 					purchased_scriptures += S.type
 				else
 					to_chat(M, "<span class='brass'>You need [S.cogs_required] cogs to unlock [S.name], you only have [cogs] left!</span>")

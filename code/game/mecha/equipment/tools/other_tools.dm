@@ -43,7 +43,7 @@
 	var/list/L = list()
 	var/turf/pos = get_turf(src)
 	for(var/turf/T in get_area_turfs(thearea.type))
-		if(!T.density && pos.z == T.z)
+		if(!T.density && pos.get_virtual_z_level() == T.get_virtual_z_level())
 			var/clear = 1
 			for(var/obj/O in T)
 				if(O.density)
@@ -121,11 +121,9 @@
 					var/mob/M = A
 					if(M.mob_negates_gravity())
 						continue
-				spawn(0)
-					var/iter = 5-get_dist(A,target)
-					for(var/i=0 to iter)
-						step_away(A,target)
-						sleep(2)
+				var/dist = 5 - get_dist(A, target)
+				var/delay = 2
+				SSmove_manager.move_away(A, target, delay = delay, timeout = delay * dist, flags = MOVEMENT_LOOP_START_FAST, priority = MOVEMENT_ABOVE_SPACE_PRIORITY)
 			var/turf/T = get_turf(target)
 			log_game("[key_name(chassis.occupant)] used a Gravitational Catapult repulse wave on [AREACOORD(T)]")
 			return TRUE
@@ -334,7 +332,7 @@
 	if(isnull(cur_charge) || !chassis.cell)
 		STOP_PROCESSING(SSobj, src)
 		set_ready_state(1)
-		occupant_message("No powercell detected.")
+		occupant_message("No power cell detected.")
 		return
 	if(cur_charge < chassis.cell.maxcharge)
 		var/area/A = get_area(chassis)
@@ -367,7 +365,7 @@
 	var/fuel_per_cycle_active = 200
 	var/power_per_cycle = 20
 
-/obj/item/mecha_parts/mecha_equipment/generator/Initialize()
+/obj/item/mecha_parts/mecha_equipment/generator/Initialize(mapload)
 	. = ..()
 	generator_init()
 
@@ -437,7 +435,7 @@
 	var/cur_charge = chassis.get_charge()
 	if(isnull(cur_charge))
 		set_ready_state(1)
-		occupant_message("No powercell detected.")
+		occupant_message("No power cell detected.")
 		log_message("Deactivated.", LOG_MECHA)
 		STOP_PROCESSING(SSobj, src)
 		return
@@ -541,7 +539,7 @@
 
 /obj/item/mecha_parts/mecha_equipment/thrusters/gas
 	name = "RCS thruster package"
-	desc = "A set of thrusters that allow for exosuit movement in zero-gravity enviroments, by expelling gas from the internal life support tank."
+	desc = "A set of thrusters that allow for exosuit movement in zero-gravity environments, by expelling gas from the internal life support tank."
 	effect_type = /obj/effect/particle_effect/smoke
 	var/move_cost = 20 //moles per step
 
@@ -566,7 +564,7 @@
 
 /obj/item/mecha_parts/mecha_equipment/thrusters/ion //for mechs with built-in thrusters, should never really exist un-attached to a mech
 	name = "Ion thruster package"
-	desc = "A set of thrusters that allow for exosuit movement in zero-gravity enviroments."
+	desc = "A set of thrusters that allow for exosuit movement in zero-gravity environments."
 	detachable = FALSE
 	salvageable = FALSE
 	effect_type = /obj/effect/particle_effect/ion_trails

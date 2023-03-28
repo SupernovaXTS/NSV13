@@ -10,24 +10,19 @@
 	level = 1			// underfloor only
 	dir = NONE			// dir will contain dominant direction for junction pipes
 	max_integrity = 200
-	armor = list("melee" = 25, "bullet" = 10, "laser" = 10, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 90, "acid" = 30)
+	armor = list("melee" = 25, "bullet" = 10, "laser" = 10, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 90, "acid" = 30, "stamina" = 0)
 	layer = DISPOSAL_PIPE_LAYER			// slightly lower than wires and other pipes
 	rad_flags = RAD_PROTECT_CONTENTS | RAD_NO_CONTAMINATE
 	var/dpdir = NONE					// bitmask of pipe directions
 	var/initialize_dirs = NONE			// bitflags of pipe directions added on init, see \code\_DEFINES\pipe_construction.dm
 	var/flip_type						// If set, the pipe is flippable and becomes this type when flipped
-	var/obj/structure/disposalconstruct/stored
 
 
 /obj/structure/disposalpipe/Initialize(mapload, obj/structure/disposalconstruct/make_from)
 	. = ..()
 
-	if(!QDELETED(make_from))
+	if(make_from)
 		setDir(make_from.dir)
-		make_from.forceMove(src)
-		stored = make_from
-	else
-		stored = new /obj/structure/disposalconstruct(src, null , SOUTH , FALSE , src)
 
 	if(dir in GLOB.diagonals) // Bent pipes already have all the dirs set
 		initialize_dirs = NONE
@@ -46,11 +41,9 @@
 // pipe is deleted
 // ensure if holder is present, it is expelled
 /obj/structure/disposalpipe/Destroy()
-	var/obj/structure/disposalholder/H = locate() in src
-	if(H)
+	for(var/obj/structure/disposalholder/H in src)
 		H.active = FALSE
 		expel(H, get_turf(src), 0)
-	QDEL_NULL(stored)
 	return ..()
 
 // returns the direction of the next pipe object, given the entrance dir
@@ -68,17 +61,15 @@
 	var/turf/T = H.nextloc()
 	var/obj/structure/disposalpipe/P = H.findpipe(T)
 
-	if(P)
-		// find other holder in next loc, if inactive merge it with current
-		var/obj/structure/disposalholder/H2 = locate() in P
-		if(H2 && !H2.active)
-			H.merge(H2)
+	if(!P) // if there wasn't a pipe, then they'll be expelled.
+		return
+	// find other holder in next loc, if inactive merge it with current
+	var/obj/structure/disposalholder/H2 = locate() in P
+	if(H2 && !H2.active)
+		H.merge(H2)
 
-		H.forceMove(P)
-		return P
-	else			// if wasn't a pipe, then they're now in our turf
-		H.forceMove(get_turf(src))
-		return null
+	H.forceMove(P)
+	return P
 
 // update the icon_state to reflect hidden status
 /obj/structure/disposalpipe/proc/update()
@@ -93,15 +84,17 @@
 // expel the held objects into a turf
 // called when there is a break in the pipe
 /obj/structure/disposalpipe/proc/expel(obj/structure/disposalholder/H, turf/T, direction)
+	if(!T)
+		T = get_turf(src)
 	var/turf/target
 	var/eject_range = 5
 	var/turf/open/floor/floorturf
 
-	if(isfloorturf(T)) //intact floor, pop the tile
+	if(isfloorturf(T) && T.intact) //intact floor, pop the tile
 		floorturf = T
 		if(floorturf.floor_tile)
 			new floorturf.floor_tile(T)
-		floorturf.make_plating()
+		floorturf.make_plating(TRUE)
 
 	if(direction)		// direction is specified
 		if(isspaceturf(T)) // if ended in space, then range is unlimited
@@ -115,20 +108,14 @@
 		target = get_offset_target_turf(T, rand(5)-rand(5), rand(5)-rand(5))
 
 	playsound(src, 'sound/machines/hiss.ogg', 50, 0, 0)
-	for(var/A in H)
-		var/atom/movable/AM = A
-		AM.forceMove(get_turf(src))
-		AM.pipe_eject(direction)
-		if(target)
-			AM.throw_at(target, eject_range, 1)
+	pipe_eject(H, direction, TRUE, target, eject_range)
 	H.vent_gas(T)
 	qdel(H)
 
 
 // pipe affected by explosion
 /obj/structure/disposalpipe/contents_explosion(severity, target)
-	var/obj/structure/disposalholder/H = locate() in src
-	if(H)
+	for(var/obj/structure/disposalholder/H in src)
 		H.contents_explosion(severity, target)
 
 
@@ -146,6 +133,7 @@
 	if(!I.tool_start_check(user, amount=0))
 		return TRUE
 
+	add_fingerprint(user)
 	to_chat(user, "<span class='notice'>You start slicing [src]...</span>")
 	if(I.use_tool(src, user, 30, volume=50))
 		deconstruct()
@@ -160,19 +148,14 @@
 /obj/structure/disposalpipe/deconstruct(disassembled = TRUE)
 	if(!(flags_1 & NODECONSTRUCT_1))
 		if(disassembled)
-			if(stored)
-				stored.forceMove(loc)
-				transfer_fingerprints_to(stored)
-				stored.setDir(dir)
-				stored = null
+			new /obj/structure/disposalconstruct(loc, null , SOUTH , FALSE , src)
 		else
 			var/turf/T = get_turf(src)
 			for(var/D in GLOB.cardinals)
 				if(D & dpdir)
 					var/obj/structure/disposalpipe/broken/P = new(T)
 					P.setDir(D)
-	qdel(src)
-
+	..()
 
 /obj/structure/disposalpipe/singularity_pull(S, current_size)
 	..()
@@ -242,7 +225,7 @@
 		pipe_type = PIPE_TYPE_NODE\
 	)
 
-/obj/structure/disposalpipe/trunk/Initialize()
+/obj/structure/disposalpipe/trunk/Initialize(mapload)
 	. = ..()
 	getlinked()
 

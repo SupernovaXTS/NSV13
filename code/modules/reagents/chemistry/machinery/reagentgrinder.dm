@@ -17,6 +17,7 @@
 	var/limit = 10
 	var/speed = 1
 	var/list/holdingitems
+	var/static/list/typecache_to_take
 
 	var/static/radial_examine = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_examine")
 	var/static/radial_eject = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_eject")
@@ -24,13 +25,15 @@
 	var/static/radial_juice = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_juice")
 	var/static/radial_mix = image(icon = 'icons/mob/radial.dmi', icon_state = "radial_mix")
 
-/obj/machinery/reagentgrinder/Initialize()
+/obj/machinery/reagentgrinder/Initialize(mapload)
 	. = ..()
+	if(!typecache_to_take)
+		typecache_to_take = typecacheof(/obj/item/reagent_containers/food/snacks/grown)
 	holdingitems = list()
 	beaker = new /obj/item/reagent_containers/glass/beaker/large(src)
 	beaker.desc += " May contain blended dust. Don't breathe this in!"
 
-/obj/machinery/reagentgrinder/constructed/Initialize()
+/obj/machinery/reagentgrinder/constructed/Initialize(mapload)
 	. = ..()
 	holdingitems = list()
 	QDEL_NULL(beaker)
@@ -39,12 +42,19 @@
 /obj/machinery/reagentgrinder/Destroy()
 	if(beaker)
 		beaker.forceMove(drop_location())
+		beaker = null
 	drop_all_items()
 	return ..()
 
 /obj/machinery/reagentgrinder/contents_explosion(severity, target)
 	if(beaker)
-		beaker.ex_act(severity, target)
+		switch(severity)
+			if(EXPLODE_DEVASTATE)
+				SSexplosions.high_mov_atom += beaker
+			if(EXPLODE_HEAVY)
+				SSexplosions.med_mov_atom += beaker
+			if(EXPLODE_LIGHT)
+				SSexplosions.low_mov_atom += beaker
 
 /obj/machinery/reagentgrinder/RefreshParts()
 	speed = 1
@@ -69,9 +79,9 @@
 			var/obj/item/O = i
 			. += "<span class='notice'>- \A [O.name].</span>"
 
-	if(!(stat & (NOPOWER|BROKEN)))
-		. += {"<span class='notice'>The status display reads:</span>\n
-		<span class='notice'>- Grinding reagents at <b>[speed*100]%</b>.<span>"}
+	if(!(machine_stat & (NOPOWER|BROKEN)))
+		. += "<span class='notice'>The status display reads:</span>\n"+\
+		"<span class='notice'>- Grinding reagents at <b>[speed*100]%</b>.</span>"
 		if(beaker)
 			for(var/datum/reagent/R in beaker.reagents.reagent_list)
 				. += "<span class='notice'>- [R.volume] units of [R.name].</span>"
@@ -139,7 +149,7 @@
 	//Fill machine with a bag!
 	if(istype(I, /obj/item/storage/bag))
 		var/list/inserted = list()
-		if(SEND_SIGNAL(I, COMSIG_TRY_STORAGE_TAKE_TYPE, /obj/item/reagent_containers/food/snacks/grown, src, limit - length(holdingitems), null, null, user, inserted))
+		if(SEND_SIGNAL(I, COMSIG_TRY_STORAGE_TAKE_TYPE, typecache_to_take, src, limit - length(holdingitems), null, null, user, inserted))
 			for(var/i in inserted)
 				holdingitems[i] = TRUE
 			if(!I.contents.len)
@@ -175,7 +185,7 @@
 		options["eject"] = radial_eject
 
 	if(isAI(user))
-		if(stat & NOPOWER)
+		if(machine_stat & NOPOWER)
 			return
 		options["examine"] = radial_examine
 
@@ -197,7 +207,7 @@
 		choice = show_radial_menu(user, src, options, require_near = !issilicon(user))
 
 	// post choice verification
-	if(operating || (isAI(user) && stat & NOPOWER) || !user.canUseTopic(src, !issilicon(user)))
+	if(operating || (isAI(user) && machine_stat & NOPOWER) || !user.canUseTopic(src, !issilicon(user)))
 		return
 
 	switch(choice)
@@ -249,7 +259,7 @@
 
 /obj/machinery/reagentgrinder/proc/juice()
 	power_change()
-	if(!beaker || stat & (NOPOWER|BROKEN) || beaker.reagents.total_volume >= beaker.reagents.maximum_volume)
+	if(!beaker || machine_stat & (NOPOWER|BROKEN) || beaker.reagents.total_volume >= beaker.reagents.maximum_volume)
 		return
 	operate_for(50, juicing = TRUE)
 	for(var/obj/item/i in holdingitems)
@@ -269,7 +279,7 @@
 
 /obj/machinery/reagentgrinder/proc/grind(mob/user)
 	power_change()
-	if(!beaker || stat & (NOPOWER|BROKEN) || beaker.reagents.total_volume >= beaker.reagents.maximum_volume)
+	if(!beaker || machine_stat & (NOPOWER|BROKEN) || beaker.reagents.total_volume >= beaker.reagents.maximum_volume)
 		return
 	operate_for(60)
 	for(var/i in holdingitems)
@@ -303,7 +313,7 @@
 /obj/machinery/reagentgrinder/proc/mix(mob/user)
 	//For butter and other things that would change upon shaking or mixing
 	power_change()
-	if(!beaker || stat & (NOPOWER|BROKEN))
+	if(!beaker || machine_stat & (NOPOWER|BROKEN))
 		return
 	operate_for(50, juicing = TRUE)
 	addtimer(CALLBACK(src, /obj/machinery/reagentgrinder/proc/mix_complete), 50)

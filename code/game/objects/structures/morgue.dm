@@ -28,7 +28,7 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 	var/message_cooldown
 	var/breakout_time = 600
 
-/obj/structure/bodycontainer/Initialize()
+/obj/structure/bodycontainer/Initialize(mapload)
 	. = ..()
 	GLOB.bodycontainers += src
 	recursive_organ_check(src)
@@ -101,7 +101,8 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 		return ..()
 
 /obj/structure/bodycontainer/deconstruct(disassembled = TRUE)
-	new /obj/item/stack/sheet/iron (loc, 5)
+	if (!(flags_1 & NODECONSTRUCT_1))
+		new /obj/item/stack/sheet/iron (loc, 5)
 	recursive_organ_check(src)
 	qdel(src)
 
@@ -126,7 +127,8 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 	playsound(src.loc, 'sound/items/deconstruct.ogg', 50, 1)
 	playsound(src, 'sound/effects/roll.ogg', 5, 1)
 	var/turf/T = get_step(src, dir)
-	connected.setDir(dir)
+	if(connected)
+		connected.setDir(dir)
 	for(var/atom/movable/AM in src)
 		AM.forceMove(T)
 	update_icon()
@@ -144,7 +146,7 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 
 /obj/structure/bodycontainer/get_remote_view_fullscreens(mob/user)
 	if(user.stat == DEAD || !(user.sight & (SEEOBJS|SEEMOBS)))
-		user.overlay_fullscreen("remote_view", /obj/screen/fullscreen/impaired, 2)
+		user.overlay_fullscreen("remote_view", /atom/movable/screen/fullscreen/impaired, 2)
 /*
  * Morgue
  */
@@ -157,7 +159,7 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 	var/beep_cooldown = 50
 	var/next_beep = 0
 
-/obj/structure/bodycontainer/morgue/Initialize()
+/obj/structure/bodycontainer/morgue/Initialize(mapload)
 	. = ..()
 	connected = new/obj/structure/tray/m_tray(src)
 	connected.connected = src
@@ -167,7 +169,6 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 	. += "<span class='notice'>The speaker is [beeper ? "enabled" : "disabled"]. Alt-click to toggle it.</span>"
 
 /obj/structure/bodycontainer/morgue/AltClick(mob/user)
-	..()
 	if(!user.canUseTopic(src, !issilicon(user)))
 		return
 	beeper = !beeper
@@ -188,7 +189,7 @@ GLOBAL_LIST_EMPTY(bodycontainers) //Let them act as spawnpoints for revenants an
 
 			for(var/mob/living/M in compiled)
 				var/mob/living/mob_occupant = get_mob_or_brainmob(M)
-				if(mob_occupant.client && !mob_occupant.suiciding && !(HAS_TRAIT(mob_occupant, TRAIT_BADDNA)) && !mob_occupant.hellbound)
+				if(mob_occupant.client && !mob_occupant.suiciding && !(HAS_TRAIT(mob_occupant, TRAIT_BADDNA)) && !mob_occupant.ishellbound())
 					icon_state = "morgue4" // Cloneable
 					if(mob_occupant.stat == DEAD && beeper)
 						if(world.time > next_beep)
@@ -224,7 +225,7 @@ GLOBAL_LIST_EMPTY(crematoriums)
 	GLOB.crematoriums.Add(src)
 	..()
 
-/obj/structure/bodycontainer/crematorium/Initialize()
+/obj/structure/bodycontainer/crematorium/Initialize(mapload)
 	. = ..()
 	connected = new /obj/structure/tray/c_tray(src)
 	connected.connected = src
@@ -260,6 +261,11 @@ GLOBAL_LIST_EMPTY(crematoriums)
 		locked = TRUE
 		update_icon()
 
+		for(var/obj/O in conts)
+			if(O.resistance_flags & INDESTRUCTIBLE)
+				O.forceMove(src) // in case an item in container should be spared
+				conts -= O
+
 		for(var/mob/living/M in conts)
 			if (M.stat != DEAD)
 				M.emote("scream")
@@ -267,7 +273,6 @@ GLOBAL_LIST_EMPTY(crematoriums)
 				log_combat(user, M, "cremated")
 			else
 				M.log_message("was cremated", LOG_ATTACK)
-
 			M.death(1)
 			if(M) //some animals get automatically deleted on death.
 				M.ghostize()
@@ -316,7 +321,7 @@ GLOBAL_LIST_EMPTY(crematoriums)
 	layer = BELOW_OBJ_LAYER
 	var/obj/structure/bodycontainer/connected = null
 	anchored = TRUE
-	pass_flags = LETPASSTHROW
+	pass_flags_self = LETPASSTHROW
 	max_integrity = 350
 
 /obj/structure/tray/Destroy()
@@ -342,6 +347,17 @@ GLOBAL_LIST_EMPTY(crematoriums)
 		add_fingerprint(user)
 	else
 		to_chat(user, "<span class='warning'>That's not connected to anything!</span>")
+
+/obj/structure/tray/attackby(obj/P, mob/user, params)
+	if(!istype(P, /obj/item/riding_offhand))
+		return ..()
+
+	var/obj/item/riding_offhand/riding_item = P
+	var/mob/living/carried_mob = riding_item.rider
+	if(carried_mob == user) //Piggyback user.
+		return
+	user.unbuckle_mob(carried_mob)
+	MouseDrop_T(carried_mob, user)
 
 /obj/structure/tray/MouseDrop_T(atom/movable/O as mob|obj, mob/user)
 	if(!ismovableatom(O) || O.anchored || !Adjacent(user) || !user.Adjacent(O) || O.loc == user)
@@ -379,17 +395,11 @@ GLOBAL_LIST_EMPTY(crematoriums)
 	name = "morgue tray"
 	desc = "Apply corpse before closing."
 	icon_state = "morguet"
+	pass_flags_self = PASSTABLE
 
-/obj/structure/tray/m_tray/CanPass(atom/movable/mover, turf/target)
-	if(istype(mover) && (mover.pass_flags & PASSTABLE))
-		return 1
+/obj/structure/tray/m_tray/CanAllowThrough(atom/movable/mover, turf/target)
+	. = ..()
+	if(.)
+		return
 	if(locate(/obj/structure/table) in get_turf(mover))
-		return 1
-	else
-		return 0
-
-/obj/structure/tray/m_tray/CanAStarPass(ID, dir, caller)
-	. = !density
-	if(ismovableatom(caller))
-		var/atom/movable/mover = caller
-		. = . || (mover.pass_flags & PASSTABLE)
+		return TRUE

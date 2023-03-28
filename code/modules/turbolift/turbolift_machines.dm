@@ -16,7 +16,7 @@ GLOBAL_LIST_EMPTY(turbolifts)
 	var/shuttle_id //Needs to match the turbolift computer & mobile dock
 	var/floor_id
 
-/obj/machinery/turbolift_button/Initialize()
+/obj/machinery/turbolift_button/Initialize(mapload)
 	. = ..()
 	if(!shuttle_id)
 		log_mapping("TURBOLIFT: [src] has no shuttle_id at [AREACOORD(src)]")
@@ -25,7 +25,7 @@ GLOBAL_LIST_EMPTY(turbolifts)
 	floor_id = "[shuttle_id]_[src.z]"
 
 /obj/machinery/turbolift_button/attack_hand(mob/user)
-	if (stat & NOPOWER)
+	if (machine_stat & NOPOWER)
 		to_chat(user, "<span class='warning'>[src] does not respond.</span>")
 	if(!shuttle_id || !floor_id)
 		say("An unexpected error has occured. Please contact a Nanotrasen Turbolift Repair Technician.")
@@ -67,7 +67,7 @@ GLOBAL_LIST_EMPTY(turbolifts)
 	var/online = TRUE //Is the elevator functional? Will be expanded upon later
 
 
-/obj/machinery/computer/turbolift/Initialize()
+/obj/machinery/computer/turbolift/Initialize(mapload)
 	. = ..()
 	GLOB.turbolifts += src
 
@@ -83,15 +83,17 @@ GLOBAL_LIST_EMPTY(turbolifts)
 	if(locked)
 		return
 	locked = TRUE
+	wires?.ui_update() //NSV13 - prevents a rare runtime pre-wire-init.
 	update_icon()
 
 /obj/machinery/door/airlock/turbolift/unbolt()
 	if(!locked)
 		return
 	locked = FALSE
+	wires?.ui_update() //NSV13 - prevents a rare runtime pre-wire-init.
 	update_icon()
 
-/obj/machinery/door/airlock/turbolift/Initialize()
+/obj/machinery/door/airlock/turbolift/Initialize(mapload)
 	. = ..()
 	var/turf/T = get_turf(src)
 	var/area/A = get_area(src)
@@ -277,14 +279,14 @@ GLOBAL_LIST_EMPTY(turbolifts)
 			var/obj/docking_port/stationary/turbolift/dest = SSshuttle.getDock(destID)
 
 			if(!dest)
-				warning("This code shouldnt ever run, a turbolift has attempted to go to a dock with id [destID] but none were found")
+				warning("This code shouldn't ever run, a turbolift has attempted to go to a dock with id [destID] but none were found")
 				return //shouldnt ever get to this point but w/e
 
 			if(dest.z == src.z)
-				return //this normally shouldnt run either but out of date interfaces might get here
+				return //this normally shouldn't run either but out of date interfaces might get here
 
 			if(dest.id in destination_queue)
-				return //again shouldnt ever run but out of date interfaces
+				return //again shouldn't ever run but out of date interfaces
 			destination_queue += dest.id
 
 			. = TRUE //we have an update now
@@ -292,9 +294,13 @@ GLOBAL_LIST_EMPTY(turbolifts)
 			if(online)
 				START_PROCESSING(SSmachines, src)
 
-/obj/machinery/computer/turbolift/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = 0, \
-												datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-  ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/computer/turbolift/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/computer/turbolift/ui_interact(mob/user, datum/tgui/ui)
+  ui = SStgui.try_update_ui(user, src, ui)
   if(!ui)
-    ui = new(user, src, ui_key, "TurboLift", name, 300, 300, master_ui, state)
+    ui = new(user, src, "TurboLift")
     ui.open()
+    ui.set_autoupdate(TRUE)

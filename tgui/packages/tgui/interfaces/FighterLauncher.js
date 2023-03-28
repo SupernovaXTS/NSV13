@@ -1,3 +1,5 @@
+// NSV13
+
 import { Fragment } from 'inferno';
 import { useBackend, useLocalState } from '../backend';
 import { Box, Button, LabeledList, NumberInput, Section } from '../components';
@@ -6,7 +8,11 @@ import { Window } from '../layouts';
 export const FighterLauncher = (props, context) => {
   const { act, data } = useBackend(context);
   return (
-    <Window resizable theme="retro">
+    <Window
+      resizable
+      theme="retro"
+      width={500}
+      height={600}>
       <Window.Content scrollable>
         <Section>
           {Object.keys(data.launchers_info).map(key => {
@@ -34,7 +40,7 @@ export const FighterLauncher = (props, context) => {
                       content={`Message ${value.pilot}`}
                       icon="comments"
                       disabled={!value.msg_cooldown}
-                      onClick={() => 
+                      onClick={() =>
                         act('message', { pilot_id: value.pilot_id })} />
                   )}
                 </Section>

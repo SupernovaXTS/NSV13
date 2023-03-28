@@ -186,9 +186,10 @@ GLOBAL_LIST_EMPTY(allCasters)
 	verb_say = "beeps"
 	verb_ask = "beeps"
 	verb_exclaim = "beeps"
-	armor = list("melee" = 50, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 30)
+	armor = list("melee" = 50, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 30, "stamina" = 0)
 	max_integrity = 200
 	integrity_failure = 50
+	layer = ABOVE_WINDOW_LAYER
 	var/screen = 0
 	var/paper_remaining = 15
 	var/securityCaster = 0
@@ -228,7 +229,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 
 /obj/machinery/newscaster/update_icon()
 	cut_overlays()
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		icon_state = "newscaster_off"
 		set_light(0)
 	else
@@ -252,14 +253,14 @@ GLOBAL_LIST_EMPTY(allCasters)
 
 
 /obj/machinery/newscaster/power_change()
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		return
 	if(powered())
-		stat &= ~NOPOWER
+		set_machine_stat(machine_stat & ~NOPOWER)
 		update_icon()
 	else
 		spawn(rand(0, 15))
-			stat |= NOPOWER
+			set_machine_stat(machine_stat | NOPOWER)
 			update_icon()
 
 /obj/machinery/newscaster/take_damage(damage_amount, damage_type = BRUTE, damage_flag = 0, sound_effect = 1, attack_dir)
@@ -295,7 +296,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 				dat+="<BR><HR>The newscaster recognises you as: <FONT COLOR='green'>[scanned_user]</FONT>"
 			if(1)
 				dat+= "Station Feed Channels<HR>"
-				if( isemptylist(GLOB.news_network.network_channels) )
+				if(!length(GLOB.news_network.network_channels) )
 					dat+="<I>No active channels found...</I>"
 				else
 					for(var/datum/newscaster/feed_channel/CHANNEL in GLOB.news_network.network_channels)
@@ -375,7 +376,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a Nanotrasen D-Notice.<BR>"
 					dat+="No further feed story additions are allowed while the D-Notice is in effect.</FONT><BR><BR>"
 				else
-					if( isemptylist(viewing_channel.messages) )
+					if( !length(viewing_channel.messages) )
 						dat+="<I>No feed messages found in channel...</I><BR>"
 					else
 						var/i = 0
@@ -403,7 +404,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 				dat+="<FONT SIZE=1>NOTE: Due to the nature of news Feeds, total deletion of a Feed Story is not possible.<BR>"
 				dat+="Keep in mind that users attempting to view a censored feed will instead see the \[REDACTED\] tag above it.</FONT>"
 				dat+="<HR>Select Feed channel to get Stories from:<BR>"
-				if(isemptylist(GLOB.news_network.network_channels))
+				if(!length(GLOB.news_network.network_channels))
 					dat+="<I>No feed channels found active...</I><BR>"
 				else
 					for(var/datum/newscaster/feed_channel/CHANNEL in GLOB.news_network.network_channels)
@@ -414,7 +415,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 				dat+="<FONT SIZE=1>A D-Notice is to be bestowed upon the channel if the handling Authority deems it as harmful for the station's"
 				dat+="morale, integrity or disciplinary behaviour. A D-Notice will render a channel unable to be updated by anyone, without deleting any feed"
 				dat+="stories it might contain at the time. You can lift a D-Notice if you have the required access at any time.</FONT><HR>"
-				if(isemptylist(GLOB.news_network.network_channels))
+				if(!length(GLOB.news_network.network_channels))
 					dat+="<I>No feed channels found active...</I><BR>"
 				else
 					for(var/datum/newscaster/feed_channel/CHANNEL in GLOB.news_network.network_channels)
@@ -423,7 +424,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 			if(12)
 				dat+="<B>[viewing_channel.channel_name]: </B><FONT SIZE=1>\[ created by: <FONT COLOR='maroon'>[viewing_channel.returnAuthor(-1)]</FONT> \]</FONT><BR>"
 				dat+="<FONT SIZE=2><A href='?src=[REF(src)];censor_channel_author=[REF(viewing_channel)]'>[(viewing_channel.authorCensor) ? ("Undo Author censorship") : ("Censor channel Author")]</A></FONT><HR>"
-				if(isemptylist(viewing_channel.messages))
+				if(!length(viewing_channel.messages))
 					dat+="<I>No feed messages found in channel...</I><BR>"
 				else
 					for(var/datum/newscaster/feed_message/MESSAGE in viewing_channel.messages)
@@ -440,7 +441,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 					dat+="<FONT COLOR='red'><B>ATTENTION: </B></FONT>This channel has been deemed as threatening to the welfare of the station, and marked with a Nanotrasen D-Notice.<BR>"
 					dat+="No further feed story additions are allowed while the D-Notice is in effect.</FONT><BR><BR>"
 				else
-					if(isemptylist(viewing_channel.messages))
+					if(!length(viewing_channel.messages))
 						dat+="<I>No feed messages found in channel...</I><BR>"
 					else
 						for(var/datum/newscaster/feed_message/MESSAGE in viewing_channel.messages)
@@ -507,7 +508,6 @@ GLOBAL_LIST_EMPTY(allCasters)
 				dat+="<A href='?src=[REF(src)];setScreen=[0]'>Return</A>"
 		var/datum/browser/popup = new(human_or_robot_user, "newscaster_main", "Newscaster Unit #[unit_no]", 400, 600)
 		popup.set_content(dat)
-		popup.set_title_image(human_or_robot_user.browse_rsc_icon(icon, icon_state))
 		popup.open()
 
 /obj/machinery/newscaster/Topic(href, href_list)
@@ -725,7 +725,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 		I.play_tool_sound(src)
 		if(I.use_tool(src, user, 60))
 			playsound(loc, 'sound/items/deconstruct.ogg', 50, 1)
-			if(stat & BROKEN)
+			if(machine_stat & BROKEN)
 				to_chat(user, "<span class='warning'>The broken remains of [src] fall on the ground.</span>")
 				new /obj/item/stack/sheet/iron(loc, 5)
 				new /obj/item/shard(loc)
@@ -735,18 +735,18 @@ GLOBAL_LIST_EMPTY(allCasters)
 				new /obj/item/wallframe/newscaster(loc)
 			qdel(src)
 	else if(I.tool_behaviour == TOOL_WELDER && user.a_intent != INTENT_HARM)
-		if(stat & BROKEN)
+		if(machine_stat & BROKEN)
 			if(!I.tool_start_check(user, amount=0))
 				return
 			user.visible_message("[user] is repairing [src].", \
 							"<span class='notice'>You begin repairing [src]...</span>", \
 							"<span class='italics'>You hear welding.</span>")
 			if(I.use_tool(src, user, 40, volume=50))
-				if(!(stat & BROKEN))
+				if(!(machine_stat & BROKEN))
 					return
 				to_chat(user, "<span class='notice'>You repair [src].</span>")
 				obj_integrity = max_integrity
-				stat &= ~BROKEN
+				set_machine_stat(machine_stat & ~BROKEN)
 				update_icon()
 		else
 			to_chat(user, "<span class='notice'>[src] does not need repairs.</span>")
@@ -756,7 +756,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 /obj/machinery/newscaster/play_attack_sound(damage, damage_type = BRUTE, damage_flag = 0)
 	switch(damage_type)
 		if(BRUTE)
-			if(stat & BROKEN)
+			if(machine_stat & BROKEN)
 				playsound(loc, 'sound/effects/hit_on_shattered_glass.ogg', 100, 1)
 			else
 				playsound(loc, 'sound/effects/glasshit.ogg', 90, 1)
@@ -771,12 +771,10 @@ GLOBAL_LIST_EMPTY(allCasters)
 		new /obj/item/shard(loc)
 	qdel(src)
 
-/obj/machinery/newscaster/obj_break()
-	if(!(stat & BROKEN) && !(flags_1 & NODECONSTRUCT_1))
-		stat |= BROKEN
-		playsound(loc, 'sound/effects/glassbr3.ogg', 100, 1)
-		update_icon()
-
+/obj/machinery/newscaster/obj_break(damage_flag)
+	. = ..()
+	if(.)
+		playsound(loc, 'sound/effects/glassbr3.ogg', 100, TRUE)
 
 /obj/machinery/newscaster/attack_paw(mob/user)
 	if(user.a_intent != INTENT_HARM)
@@ -805,7 +803,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 		else
 			to_chat(user, "<span class='warning'>You cannot interface with silicon photo uploading!</span>")
 		if(!targetcam.stored.len)
-			to_chat(usr, "<span class='boldannounce'>No images saved</span>")
+			to_chat(usr, "<span class='boldannounce'>No images saved.</span>")
 			return
 		var/datum/picture/selection = targetcam.selectpicture(user)
 		if(selection)
@@ -908,7 +906,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 			if(0) //Cover
 				dat+="<DIV ALIGN='center'><B><FONT SIZE=6>The Griffon</FONT></B></div>"
 				dat+="<DIV ALIGN='center'><FONT SIZE=2>Nanotrasen-standard newspaper, for use on Nanotrasen? Space Facilities</FONT></div><HR>"
-				if(isemptylist(news_content))
+				if(!length(news_content))
 					if(wantedAuthor)
 						dat+="Contents:<BR><ul><B><FONT COLOR='red'>**</FONT>Important Security Announcement<FONT COLOR='red'>**</FONT></B> <FONT SIZE=2>\[page [pages+2]\]</FONT><BR></ul>"
 					else
@@ -935,7 +933,7 @@ GLOBAL_LIST_EMPTY(allCasters)
 				if(notContent(C.DclassCensorTime))
 					dat+="This channel was deemed dangerous to the general welfare of the station and therefore marked with a <B><FONT COLOR='red'>D-Notice</B></FONT>. Its contents were not transferred to the newspaper at the time of printing."
 				else
-					if(isemptylist(C.messages))
+					if(!length(C.messages))
 						dat+="No Feed stories stem from this channel..."
 					else
 						var/i = 0

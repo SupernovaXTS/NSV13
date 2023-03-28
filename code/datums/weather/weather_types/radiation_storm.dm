@@ -4,7 +4,7 @@
 	desc = "A cloud of intense radiation passes through the area dealing rad damage to those who are unprotected."
 
 	telegraph_duration = 400
-	telegraph_message = "<span class='danger'>The air begins to grow warm.</span>"
+	telegraph_message = null
 
 	weather_message = "<span class='userdanger'><i>You feel waves of heat wash over you! Find shelter!</i></span>"
 	weather_overlay = "ash_storm"
@@ -18,7 +18,8 @@
 
 	area_type = /area
 	protected_areas = list(/area/maintenance, /area/ai_monitored/turret_protected/ai_upload, /area/ai_monitored/turret_protected/ai_upload_foyer,
-	/area/ai_monitored/turret_protected/ai, /area/storage/emergency/starboard, /area/storage/emergency/port, /area/shuttle)
+	/area/ai_monitored/turret_protected/ai, /area/storage/emergency/starboard, /area/storage/emergency/port, /area/shuttle, /area/security/prison/asteroid/shielded,
+	/area/security/prison/asteroid/service, /area/space/nearstation)
 	target_trait = ZTRAIT_STATION
 
 	immunity_type = "rad"
@@ -33,7 +34,7 @@
 	if(prob(40))
 		if(ishuman(L))
 			var/mob/living/carbon/human/H = L
-			if(H.dna && !HAS_TRAIT(H, TRAIT_RADIMMUNE))
+			if(H.dna && !(HAS_TRAIT(H, TRAIT_RADIMMUNE) || HAS_TRAIT(H, TRAIT_MUTATEIMMUNE))) // NSV13 Don't add mutations for species that are trait immune, IPCs
 				if(prob(max(0,100-resist)))
 					H.randmuti()
 					if(prob(50))
@@ -42,12 +43,36 @@
 						else
 							H.easy_randmut(POSITIVE)
 						H.domutcheck()
+			if( HAS_TRAIT( H, TRAIT_IPCRADBRAINDAMAGE ) ) // NSV13 IPCs will gain brain damage instead of mutations when exposed to radiation
+				if(prob(max(0,100-resist)))
+					if(prob(50))
+						var/trauma_type = pickweight( list(
+							BRAIN_TRAUMA_MILD = 65,
+							BRAIN_TRAUMA_SEVERE = 30,
+							BRAIN_TRAUMA_SPECIAL = 5
+						) )
+						var/resistance = pick(
+							95;TRAUMA_RESILIENCE_BASIC,
+							// 30;TRAUMA_RESILIENCE_SURGERY,
+							// 15;TRAUMA_RESILIENCE_LOBOTOMY,
+							5;TRAUMA_RESILIENCE_MAGIC
+						)
+						H.gain_trauma_type( trauma_type, resistance )
+
+						var/emote_type = pickweight( list(
+							"beep" = 34,
+							"buzz" = 34,
+							"buzz2" = 34,
+						) )
+						H.emote( emote_type )
+			// NSV13 end code segment
+
 		L.rad_act(20)
 
 /datum/weather/rad_storm/end()
 	if(..())
 		return
-	priority_announce("The radiation threat has passed. Please return to your workplaces.", "Anomaly Alert")
+	priority_announce("The radiation threat has passed. Please return to your workplaces.", "Anomaly Alert", SSstation.announcer.get_rand_alert_sound())
 	status_alarm(FALSE)
 
 /datum/weather/rad_storm/proc/status_alarm(active)	//Makes the status displays show the radiation warning for those who missed the announcement.

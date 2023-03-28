@@ -11,7 +11,7 @@
 
 	var/static/list/AllTeleporters
 
-/obj/effect/bump_teleporter/Initialize()
+/obj/effect/bump_teleporter/Initialize(mapload)
 	. = ..()
 	LAZYADD(AllTeleporters, src)
 
@@ -34,4 +34,4 @@
 
 	for(var/obj/effect/bump_teleporter/BT in AllTeleporters)
 		if(BT.id == src.id_target)
-			AM.forceMove(BT.loc) //Teleport to location with correct id.
+			do_teleport(AM, BT.loc, no_effects = TRUE, channel = TELEPORT_CHANNEL_FREE)

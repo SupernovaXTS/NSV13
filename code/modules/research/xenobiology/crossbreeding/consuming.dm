@@ -18,7 +18,7 @@ Consuming extracts:
 /obj/item/slimecross/consuming/attackby(obj/item/O, mob/user)
 	if(istype(O,/obj/item/reagent_containers/food/snacks))
 		if(last_produced + cooldown > world.time)
-			to_chat(user, "<span class='warning'>[src] is still digesting after its last meal!<span>")
+			to_chat(user, "<span class='warning'>[src] is still digesting after its last meal!</span>")
 			return
 		var/datum/reagent/N = O.reagents.has_reagent(/datum/reagent/consumable/nutriment)
 		if(N)
@@ -35,8 +35,8 @@ Consuming extracts:
 			last_produced = world.time
 			for(var/i in 1 to cookies)
 				var/obj/item/S = spawncookie()
-				S.pixel_x = rand(-5, 5)
-				S.pixel_y = rand(-5, 5)
+				S.pixel_x = base_pixel_x + rand(-5, 5)
+				S.pixel_y = base_pixel_y + rand(-5, 5)
 		return
 	..()
 
@@ -293,7 +293,7 @@ Consuming extracts:
 	taste = "vanilla and " //Randomly selected color dye.
 	var/colour = "#FFFFFF"
 
-/obj/item/slime_cookie/pyrite/Initialize()
+/obj/item/slime_cookie/pyrite/Initialize(mapload)
 	. = ..()
 	var/tastemessage = "paint remover"
 	switch(rand(1,7))

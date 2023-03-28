@@ -16,7 +16,7 @@
 
 /atom/movable/lighting_object/Initialize(mapload)
 	. = ..()
-	verbs.Cut()
+	remove_verb(verbs)
 	atom_colours.Cut()
 
 	myturf = loc
@@ -29,11 +29,11 @@
 		S.update_starlight()
 
 	needs_update = TRUE
-	GLOB.lighting_update_objects += src
+	SSlighting.objects_queue += src
 
 /atom/movable/lighting_object/Destroy(var/force)
 	if (force)
-		GLOB.lighting_update_objects     -= src
+		SSlighting.objects_queue -= src
 		if (loc != myturf)
 			var/turf/oldturf = get_turf(myturf)
 			var/turf/newturf = get_turf(loc)
@@ -69,16 +69,10 @@
 	// See LIGHTING_CORNER_DIAGONAL in lighting_corner.dm for why these values are what they are.
 	var/static/datum/lighting_corner/dummy/dummy_lighting_corner = new
 
-	var/list/corners = myturf.corners
-	var/datum/lighting_corner/cr = dummy_lighting_corner
-	var/datum/lighting_corner/cg = dummy_lighting_corner
-	var/datum/lighting_corner/cb = dummy_lighting_corner
-	var/datum/lighting_corner/ca = dummy_lighting_corner
-	if (corners) //done this way for speed
-		cr = corners[3] || dummy_lighting_corner
-		cg = corners[2] || dummy_lighting_corner
-		cb = corners[4] || dummy_lighting_corner
-		ca = corners[1] || dummy_lighting_corner
+	var/datum/lighting_corner/cr = myturf.lighting_corner_SW || dummy_lighting_corner
+	var/datum/lighting_corner/cg = myturf.lighting_corner_SE || dummy_lighting_corner
+	var/datum/lighting_corner/cb = myturf.lighting_corner_NW || dummy_lighting_corner
+	var/datum/lighting_corner/ca = myturf.lighting_corner_NE || dummy_lighting_corner
 
 	var/max = max(cr.cache_mx, cg.cache_mx, cb.cache_mx, ca.cache_mx)
 
@@ -101,7 +95,7 @@
 	#if LIGHTING_SOFT_THRESHOLD != 0
 	var/set_luminosity = max > LIGHTING_SOFT_THRESHOLD
 	#else
-	// Because of floating points?, it won't even be a flat 0.
+	// Because of floating pointsï¿½?, it won't even be a flat 0.
 	// This number is mostly arbitrary.
 	var/set_luminosity = max > 1e-6
 	#endif

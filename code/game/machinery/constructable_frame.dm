@@ -97,23 +97,22 @@
 				if(P.use_tool(src, user, 40, volume=50))
 					if(state == 1)
 						to_chat(user, "<span class='notice'>You disassemble the frame.</span>")
-						var/obj/item/stack/sheet/iron/M = new (loc, 5)
-						M.add_fingerprint(user)
+						new /obj/item/stack/sheet/iron(drop_location(), 5, TRUE, user)
 						qdel(src)
 				return
 			if(P.tool_behaviour == TOOL_WRENCH)
-				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [name]...</span>")
+				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [src]...</span>")
 				if(P.use_tool(src, user, 40, volume=75))
 					if(state == 1)
-						to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [name].</span>")
+						to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [src].</span>")
 						setAnchored(!anchored)
 				return
 
 		if(2)
 			if(P.tool_behaviour == TOOL_WRENCH)
-				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [name]...</span>")
+				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [src]...</span>")
 				if(P.use_tool(src, user, 40, volume=75))
-					to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [name].</span>")
+					to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [src].</span>")
 					setAnchored(!anchored)
 				return
 
@@ -166,9 +165,9 @@
 				return
 
 			if(P.tool_behaviour == TOOL_WRENCH && !circuit.needs_anchored)
-				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [name]...</span>")
+				to_chat(user, "<span class='notice'>You start [anchored ? "un" : ""]securing [src]...</span>")
 				if(P.use_tool(src, user, 40, volume=75))
-					to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [name].</span>")
+					to_chat(user, "<span class='notice'>You [anchored ? "un" : ""]secure [src].</span>")
 					setAnchored(!anchored)
 				return
 
@@ -262,6 +261,7 @@
 						to_chat(user, "<span class='notice'>You add [P] to [src].</span>")
 						components += P
 						req_components[I]--
+						P.forceMove(src) //For stuff like twohandeds.
 						return 1
 				to_chat(user, "<span class='warning'>You cannot add that to the machine!</span>")
 				return 0

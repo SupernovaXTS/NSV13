@@ -34,6 +34,10 @@
 	name = "Abductor Solo"
 	outfit = /datum/outfit/abductor/scientist/onemanteam
 
+/datum/antagonist/abductor/scientist/onemanteam
+	name = "Abductor Solo"
+	outfit = /datum/outfit/abductor/scientist/onemanteam
+
 /datum/antagonist/abductor/create_team(datum/team/abductor_team/new_team)
 	if(!new_team)
 		return
@@ -68,6 +72,8 @@
 	to_chat(owner.current, "<span class='notice'>Choose a worthy disguise and plan your targets carefully! Humans will kill you on sight.</span>")
 	to_chat(owner.current, "<span class='notice'>[greet_text]</span>")
 	owner.announce_objectives()
+	owner.current.client?.tgui_panel?.give_antagonist_popup("Abductor",
+		"Capture and experiment on members of the crew, without being spotted.")
 
 /datum/antagonist/abductor/proc/finalize_abductor()
 	//Equip
@@ -182,11 +188,13 @@
 	to_chat(owner, "<span class='warning'><b>Your mind snaps!</b></span>")
 	to_chat(owner, "<big><span class='warning'><b>You can't remember how you got here...</b></span></big>")
 	owner.announce_objectives()
+	var/datum/objective/first_objective = objectives[1]
+	owner.current.client?.tgui_panel?.give_antagonist_popup("Abductee",
+		"Something isn't right with your brain, you feel like there is something you have to do no matter what...\n\
+		[LAZYLEN(objectives)?"<B>Objective</B>: [first_objective.explanation_text]": "Nevermind..."]")
 
 /datum/antagonist/abductee/proc/give_objective()
 	var/mob/living/carbon/human/H = owner.current
-	if(istype(H))
-		H.gain_trauma_type(BRAIN_TRAUMA_MILD, TRAUMA_RESILIENCE_LOBOTOMY)
 	var/objtype = (prob(75) ? /datum/objective/abductee/random : pick(subtypesof(/datum/objective/abductee/) - /datum/objective/abductee/random))
 	var/datum/objective/abductee/O = new objtype()
 	objectives += O
@@ -218,11 +226,11 @@
 /datum/objective/experiment/check_completion()
 	for(var/obj/machinery/abductor/experiment/E in GLOB.machines)
 		if(!istype(team, /datum/team/abductor_team))
-			return FALSE
+			return ..()
 		var/datum/team/abductor_team/T = team
 		if(E.team_number == T.team_number)
-			return E.points >= target_amount
-	return FALSE
+			return (E.points >= target_amount) || ..()
+	return ..()
 
 /datum/antagonist/proc/update_abductor_icons_added(datum/mind/alien_mind,hud_type)
 	var/datum/atom_hud/antag/hud = GLOB.huds[ANTAG_HUD_ABDUCTOR]

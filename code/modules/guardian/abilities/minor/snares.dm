@@ -5,17 +5,20 @@
 	cost = 1
 
 /datum/guardian_ability/minor/snare/Apply()
-	guardian.verbs += /mob/living/simple_animal/hostile/guardian/proc/Snare
-	guardian.verbs += /mob/living/simple_animal/hostile/guardian/proc/DisarmSnare
+	guardian.add_verb(/mob/living/simple_animal/hostile/guardian/proc/Snare)
+	guardian.add_verb(/mob/living/simple_animal/hostile/guardian/proc/DisarmSnare)
 
 /datum/guardian_ability/minor/snare/Remove()
-	guardian.verbs -= /mob/living/simple_animal/hostile/guardian/proc/Snare
-	guardian.verbs -= /mob/living/simple_animal/hostile/guardian/proc/DisarmSnare
+	guardian.remove_verb(/mob/living/simple_animal/hostile/guardian/proc/Snare)
+	guardian.remove_verb(/mob/living/simple_animal/hostile/guardian/proc/DisarmSnare)
 
 /mob/living/simple_animal/hostile/guardian/proc/Snare()
 	set name = "Set Surveillance Snare"
 	set category = "Guardian"
 	set desc = "Set an invisible snare that will alert you when living creatures walk over it. Max of 5"
+	if(!can_use_abilities)
+		to_chat(src, "<span class='danger'><B>You can't do that right now!</span></B>")
+		return
 	if(snares.len <6)
 		var/turf/snare_loc = get_turf(src.loc)
 		var/obj/effect/snare/S = new /obj/effect/snare(snare_loc)
@@ -44,7 +47,16 @@
 	var/mob/living/simple_animal/hostile/guardian/spawner
 	invisibility = INVISIBILITY_ABSTRACT
 
-/obj/effect/snare/Crossed(AM as mob|obj)
+/obj/effect/snare/Initialize(mapload)
+	. = ..()
+	var/static/list/loc_connections = list(
+		COMSIG_ATOM_ENTERED = .proc/on_entered,
+	)
+	AddElement(/datum/element/connect_loc, loc_connections)
+
+/obj/effect/snare/proc/on_entered(datum/source, AM as mob|obj)
+	SIGNAL_HANDLER
+
 	if(isliving(AM) && spawner && spawner?.summoner?.current && AM != spawner && !spawner.hasmatchingsummoner(AM))
 		to_chat(spawner.summoner.current, "<span class='danger'><B>[AM] has crossed surveillance snare, [name].</span></B>")
 		var/list/guardians = spawner.summoner.current.hasparasites()

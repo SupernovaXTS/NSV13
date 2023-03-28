@@ -17,7 +17,7 @@
 /obj/structure/tank_dispenser/plasma
 	oxygentanks = 0
 
-/obj/structure/tank_dispenser/Initialize()
+/obj/structure/tank_dispenser/Initialize(mapload)
 	. = ..()
 	for(var/i in 1 to oxygentanks)
 		new /obj/item/tank/internals/oxygen(src)
@@ -63,15 +63,23 @@
 		return
 
 	if(!user.transferItemToLoc(I, src))
+		if(istype(I, /obj/item/tank/internals/plasma))
+			plasmatanks--
+		else if(istype(I, /obj/item/tank/internals/oxygen))
+			oxygentanks--
 		return
 	to_chat(user, "<span class='notice'>You put [I] in [src].</span>")
 	update_icon()
+	ui_update()
 
-/obj/structure/tank_dispenser/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-										datum/tgui/master_ui = null, datum/ui_state/state = GLOB.physical_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/structure/tank_dispenser/ui_state(mob/user)
+	return GLOB.physical_state
+
+/obj/structure/tank_dispenser/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "TankDispenser", name, 275, 103, master_ui, state)
+		ui = new(user, src, "TankDispenser")
 		ui.open()
 
 /obj/structure/tank_dispenser/ui_data(mob/user)
@@ -97,6 +105,7 @@
 				usr.put_in_hands(tank)
 				oxygentanks--
 			. = TRUE
+	ui_update()
 	update_icon()
 
 

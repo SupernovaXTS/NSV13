@@ -11,6 +11,7 @@
 	hardware_flag = PROGRAM_LAPTOP
 	max_hardware_size = 2
 	w_class = WEIGHT_CLASS_NORMAL
+	max_bays = 4
 
 	// No running around with open laptops in hands.
 	item_flags = SLOWS_WHILE_IN_HAND
@@ -26,7 +27,7 @@
 	if(screen_on)
 		. += "<span class='notice'>Alt-click to close it.</span>"
 
-/obj/item/modular_computer/laptop/Initialize()
+/obj/item/modular_computer/laptop/Initialize(mapload)
 	. = ..()
 
 	if(start_open && !screen_on)
@@ -56,8 +57,8 @@
 	. = ..()
 	if(over_object == usr || over_object == src)
 		try_toggle_open(usr)
-	else if(istype(over_object, /obj/screen/inventory/hand))
-		var/obj/screen/inventory/hand/H = over_object
+	else if(istype(over_object, /atom/movable/screen/inventory/hand))
+		var/atom/movable/screen/inventory/hand/H = over_object
 		var/mob/M = usr
 
 		if(!M.restrained() && !M.stat)
@@ -87,7 +88,7 @@
 	if(screen_on) // Close it.
 		try_toggle_open(user)
 	else
-		return ..()
+		..()
 
 /obj/item/modular_computer/laptop/proc/toggle_open(mob/living/user=null)
 	if(screen_on)

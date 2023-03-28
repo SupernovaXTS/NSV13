@@ -18,7 +18,6 @@
 	var/fear_state = PHOBIA_STATE_CALM
 	var/stress_check = 0
 	var/last_scare = 0
-	var/datum/martial_art/psychotic_brawling/psychotic_brawling //this is for fight-or-flight panic
 	var/list/trigger_words
 	//instead of cycling every atom, only cycle the relevant types
 	var/list/trigger_mobs
@@ -48,6 +47,10 @@
 	if(clonable)
 		return new type(phobia_type)
 
+/datum/brain_trauma/mild/phobia/on_gain()
+	if(is_type_in_typecache(owner.dna.species, trigger_species))
+		trigger_species -= owner.dna.species.type
+
 /datum/brain_trauma/mild/phobia/on_life()
 	..()
 	if(HAS_TRAIT(owner, TRAIT_FEARLESS))
@@ -68,8 +71,7 @@
 
 			for(var/mob/living/carbon/human/HU in seen_atoms) //check equipment for trigger items
 				var/spook = 0
-				for(var/X in HU.get_all_slots() | HU.held_items)
-					var/obj/I = X
+				for(var/obj/I as() in HU.get_all_slots() | HU.held_items)
 					if(!QDELETED(I) && is_type_in_typecache(I, trigger_objs))
 						spook ++
 				if(spook)
@@ -79,7 +81,7 @@
 			for(var/turf/T in seen_atoms)
 				if(is_type_in_typecache(T, trigger_turfs))
 					freak_out(T)
-			
+
 		if(LAZYLEN(trigger_mobs) || LAZYLEN(trigger_species))
 			for(var/mob/M in seen_atoms)
 				if(is_type_in_typecache(M, trigger_mobs))
@@ -105,7 +107,7 @@
 			if(fear_state >= PHOBIA_STATE_UNEASY)
 				fear_state = PHOBIA_STATE_EDGY
 				owner.remove_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE)
-				to_chat(owner, "<span class ='notice'>you manage to calm down a little</span>")
+				to_chat(owner, "<span class ='notice'>you manage to calm down a little.</span>")
 			if(fear_state == PHOBIA_STATE_CALM)
 				fear_state = PHOBIA_STATE_EDGY
 				if(prob(stress * 10))
@@ -113,20 +115,19 @@
 		if(9 to 16)
 			if(fear_state >= PHOBIA_STATE_FIGHTORFLIGHT)
 				fear_state = PHOBIA_STATE_UNEASY
-				to_chat(owner, "<span class ='notice'>You're safe now... better be careful anyways.</span>")	
-				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = 1)	
-				psychotic_brawling.remove(owner)
+				to_chat(owner, "<span class ='notice'>You're safe now... better be careful anyways.</span>")
+				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = 1)
 			if(fear_state <= PHOBIA_STATE_EDGY)
 				fear_state = PHOBIA_STATE_UNEASY
-				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = 1)	
+				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = 1)
 				owner.Jitter(5)
 				if(prob(stress * 10))
 					fearscore = 17
 		if(17 to 28)
 			if(fear_state >= PHOBIA_STATE_TERROR) //we don't get an adrenaline rush when calming down
-				fear_state = PHOBIA_STATE_FIGHTORFLIGHT 
+				fear_state = PHOBIA_STATE_FIGHTORFLIGHT
 				to_chat(owner, "<span class ='notice'>It's gone for now... Better get out of here before it comes back.</span>")
-				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = -0.4)	
+				owner.add_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE, 100, override=TRUE, multiplicative_slowdown = -0.4)
 			if(fear_state <= PHOBIA_STATE_UNEASY) //ADRENALINE RUSH! You get psychotic brawling, a burst of speed, and some stun avoidance for awhile. If you fail to escape or destroy the threat during an adrenaline rush, you're fucked either way
 				fear_state = PHOBIA_STATE_FIGHTORFLIGHT
 				to_chat(owner, "<span class ='userdanger'>YOU HAVE TO GET OUT OF HERE! IT'S DANGEROUS!</span>")
@@ -134,8 +135,6 @@
 				owner.emote("scream")
 				if(prob(stress * 10))
 					fearscore = 27 //we don't get the adrenaline rush, and keel over like a baby immediately
-				psychotic_brawling = new(null)
-				psychotic_brawling.teach(owner, TRUE)
 				owner.adjustStaminaLoss(-75)
 				owner.SetStun(0)
 				owner.SetKnockdown(0)
@@ -155,39 +154,36 @@
 				owner.visible_message("<span class ='danger'>[owner] collapses into a fetal position and cowers in fear!</span>", "<span class ='userdanger'>I'm done for...</span>")
 				owner.Paralyze(80)
 				owner.Jitter(8)
-				psychotic_brawling.remove(owner)
 				stress++
 				if(prob(stress * 10))
 					fearscore = 36 //we immediately keel over and faint
 		if(36 to INFINITY)
-			if(fear_state <= PHOBIA_STATE_TERROR) 
+			if(fear_state <= PHOBIA_STATE_TERROR)
 				fear_state = PHOBIA_STATE_FAINT
 				owner.remove_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE) //in the case that we get so scared by enough bullshit nearby we skip the last stage
-				psychotic_brawling.remove(owner)//ditto
 				owner.Sleeping(300)
 				owner.visible_message("<span class ='danger'>[owner] faints in fear!.</span>", "<span class ='userdanger'>It's too much! you faint!</span>")
 				if(prob(stress * 3))
 					owner.set_heartattack(TRUE)
 					to_chat(owner, "<span class='userdanger'>Your heart stops!</span>")
 				stress++
-				
 
-	
-/datum/brain_trauma/mild/phobia/on_hear(message, speaker, message_language, raw_message, radio_freq)
-	
+
+
+/datum/brain_trauma/mild/phobia/handle_hearing(datum/source, list/hearing_args)
+
 	if(!owner.can_hear()) //words can't trigger you if you can't hear them *taps head*
-		return message
+		return
 	if(HAS_TRAIT(owner, TRAIT_FEARLESS))
-		return message
+		return
 	for(var/word in trigger_words)
 		var/regex/reg = regex("(\\b|\\A)[REGEX_QUOTE(word)]'?s*(\\b|\\Z)", "i")
 
-		if(findtext(raw_message, reg))
+		if(findtext(hearing_args[HEARING_RAW_MESSAGE], reg))
 			if(fear_state <= (PHOBIA_STATE_CALM)) //words can put you on edge, but won't take you over it, unless you have gotten stressed already. don't call freak_out to avoid gaming the adrenaline rush
-				fearscore ++ 
-			message = reg.Replace(message, "<span class='phobia'>$1</span>")
+				fearscore ++
+			hearing_args[HEARING_RAW_MESSAGE] = reg.Replace(hearing_args[HEARING_RAW_MESSAGE], "<span class='phobia'>$1</span>")
 			break
-	return message
 
 /datum/brain_trauma/mild/phobia/handle_speech(datum/source, list/speech_args)
 	if(HAS_TRAIT(owner, TRAIT_FEARLESS))
@@ -198,7 +194,7 @@
 		if(findtext(speech_args[SPEECH_MESSAGE], reg))
 			to_chat(owner, "<span class='warning'>Saying \"<span class='phobia'>[word]</span>\" puts you on edge!</span>")
 			if(fear_state <= (PHOBIA_STATE_CALM))
-				fearscore ++ 
+				fearscore ++
 
 /datum/brain_trauma/mild/phobia/proc/freak_out(atom/reason, trigger_word, spooklevel = 0)//spooklevel is only used when calculating amount of scary items on a person.
 	if(owner.stat >= UNCONSCIOUS)
@@ -251,10 +247,8 @@
 
 /datum/brain_trauma/mild/phobia/on_lose()
 	owner.remove_movespeed_modifier(MOVESPEED_ID_PHOBIA, TRUE)
-	psychotic_brawling.remove(owner)
-	QDEL_NULL(psychotic_brawling)
 	..()
-	
+
 // Defined phobia types for badminry, not included in the RNG trauma pool to avoid diluting.
 
 /datum/brain_trauma/mild/phobia/spiders
@@ -329,9 +323,9 @@
 	phobia_type = "conspiracies"
 	random_gain = FALSE
 
-#undef PHOBIA_STATE_CALM 
-#undef PHOBIA_STATE_EDGY 
-#undef PHOBIA_STATE_UNEASY 
-#undef PHOBIA_STATE_FIGHTORFLIGHT 
-#undef PHOBIA_STATE_TERROR 
-#undef PHOBIA_STATE_FAINT 
+#undef PHOBIA_STATE_CALM
+#undef PHOBIA_STATE_EDGY
+#undef PHOBIA_STATE_UNEASY
+#undef PHOBIA_STATE_FIGHTORFLIGHT
+#undef PHOBIA_STATE_TERROR
+#undef PHOBIA_STATE_FAINT

@@ -19,7 +19,7 @@
 
 	var/override = 0
 
-	for(var/datum/mutation/human/HM in dna.mutations)
+	for(var/datum/mutation/HM as() in dna.mutations)
 		override += HM.on_attack_hand(A, proximity)
 
 	if(override)
@@ -85,15 +85,19 @@
 /mob/living/carbon/RestrainedClickOn(atom/A)
 	return 0
 
+/mob/living/carbon/RangedAttack(atom/A, mouseparams)
+	. = ..()
+	if(!dna)
+		return
+	for(var/datum/mutation/HM as() in dna.mutations)
+		HM.on_ranged_attack(A, mouseparams)
+
 /mob/living/carbon/human/RangedAttack(atom/A, mouseparams)
 	. = ..()
 	if(gloves)
 		var/obj/item/clothing/gloves/G = gloves
 		if(istype(G) && G.Touch(A,0)) // for magic gloves
 			return
-
-	for(var/datum/mutation/human/HM in dna.mutations)
-		HM.on_ranged_attack(A, mouseparams)
 
 	if(isturf(A) && get_dist(src,A) <= 1)
 		src.Move_Pulled(A)
@@ -106,6 +110,7 @@
 	A.attack_animal(src)
 
 /atom/proc/attack_animal(mob/user)
+	SEND_SIGNAL(src, COMSIG_ATOM_ATTACK_ANIMAL, user)
 	return
 
 /mob/living/RestrainedClickOn(atom/A)
@@ -114,7 +119,13 @@
 /*
 	Monkeys
 */
-/mob/living/carbon/monkey/UnarmedAttack(atom/A)
+/mob/living/carbon/monkey/UnarmedAttack(atom/A, proximity)
+	var/override = 0
+	for(var/datum/mutation/HM as() in dna.mutations)
+		override += HM.on_attack_hand(A, proximity)
+	if(override)
+		return
+
 	A.attack_paw(src)
 
 /atom/proc/attack_paw(mob/user)
@@ -184,8 +195,10 @@
 */
 /mob/living/simple_animal/slime/UnarmedAttack(atom/A)
 	A.attack_slime(src)
+
 /atom/proc/attack_slime(mob/user)
 	return
+
 /mob/living/simple_animal/slime/RestrainedClickOn(atom/A)
 	return
 
@@ -231,7 +244,7 @@
 */
 
 /mob/living/simple_animal/UnarmedAttack(atom/A, proximity)
-	if(!dextrous)
+	if(!dextrous || a_intent == INTENT_HARM)
 		return ..()
 	if(!ismob(A))
 		A.attack_hand(src)
@@ -243,7 +256,7 @@
 */
 
 /mob/living/simple_animal/hostile/UnarmedAttack(atom/A)
-	target = A
+	GiveTarget(A)
 	if(dextrous && !ismob(A))
 		..()
 	else

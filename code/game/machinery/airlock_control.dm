@@ -2,7 +2,6 @@
 
 // This code allows for airlocks to be controlled externally by setting an id_tag and comm frequency (disables ID access)
 /obj/machinery/door/airlock
-	var/id_tag
 	var/frequency
 	var/datum/radio_frequency/radio_connection
 
@@ -92,13 +91,12 @@
 
 	power_channel = AREA_USAGE_ENVIRON
 
-	var/id_tag
 	var/master_tag
 	var/frequency = FREQ_AIRLOCK_CONTROL
 
 	var/datum/radio_frequency/radio_connection
 
-	var/on = TRUE
+	var/on = TRUE // Reviewer: I can't find any way to turn this thing off but it stays
 	var/alert = FALSE
 
 /obj/machinery/airlock_sensor/incinerator_toxmix
@@ -138,7 +136,9 @@
 	if(on)
 		var/datum/gas_mixture/air_sample = return_air()
 		var/pressure = round(air_sample.return_pressure(),0.1)
-		alert = (pressure < ONE_ATMOSPHERE*0.8)
+		if((pressure < ONE_ATMOSPHERE*0.8) != alert)
+			alert = !alert
+			update_icon()
 
 		var/datum/signal/signal = new(list(
 			"tag" = id_tag,
@@ -148,14 +148,12 @@
 
 		radio_connection.post_signal(src, signal, range = AIRLOCK_CONTROL_RANGE, filter = RADIO_AIRLOCK)
 
-	update_icon()
-
 /obj/machinery/airlock_sensor/proc/set_frequency(new_frequency)
 	SSradio.remove_object(src, frequency)
 	frequency = new_frequency
 	radio_connection = SSradio.add_object(src, frequency, RADIO_AIRLOCK)
 
-/obj/machinery/airlock_sensor/Initialize()
+/obj/machinery/airlock_sensor/Initialize(mapload)
 	. = ..()
 	set_frequency(frequency)
 

@@ -1,7 +1,7 @@
 //MAP CONVERTED BY dmm2tgm.py THIS HEADER COMMENT PREVENTS RECONVERSION, DO NOT REMOVE
 "a" = (
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
 "b" = (
 /turf/closed/mineral,
 /area/ruin/powered)
@@ -152,6 +152,10 @@
 	initial_gas_mix = "TEMP=2.7"
 	},
 /area/ruin/powered)
+"I" = (
+/obj/effect/landmark/dropship_entry,
+/turf/template_noop,
+/area/template_noop)
 
 (1,1,1) = {"
 a
@@ -453,7 +457,7 @@ a
 a
 a
 a
-a
+I
 a
 a
 a

@@ -106,6 +106,8 @@
 				newletter += "[newletter]"
 			if(20)
 				newletter += "[newletter][newletter]"
+			else
+				SWITCH_EMPTY_STATEMENT
 		. += "[newletter]"
 	return sanitize(.)
 
@@ -149,6 +151,8 @@
 				newletter = "nglu"
 			if(5)
 				newletter = "glor"
+			else
+				SWITCH_EMPTY_STATEMENT
 		. += newletter
 	return sanitize(.)
 
@@ -191,6 +195,8 @@
 				newletter = "kth"
 			if(5)
 				newletter = "toc"
+			else
+				SWITCH_EMPTY_STATEMENT
 		. += newletter
 	return sanitize(.)
 
@@ -277,11 +283,10 @@
 /proc/findname(msg)
 	if(!istext(msg))
 		msg = "[msg]"
-	for(var/i in GLOB.mob_list)
-		var/mob/M = i
-		if(M.real_name == msg)
+	for(var/mob/M as anything in GLOB.mob_list)
+		if(lowertext(M.real_name) == lowertext(msg))
 			return M
-	return 0
+	return FALSE
 
 ///Find the first name of a mob from the real name with regex
 /mob/proc/first_name()
@@ -379,11 +384,6 @@
 			if("apprentice")
 				if(M.mind in SSticker.mode.apprentices)
 					return 2
-			if("monkey")
-				if(isliving(M))
-					var/mob/living/L = M
-					if(L.diseases && (locate(/datum/disease/transformation/jungle_fever) in L.diseases))
-						return 2
 		return TRUE
 	if(M.mind && LAZYLEN(M.mind.antag_datums)) //they have an antag datum!
 		return TRUE
@@ -391,7 +391,7 @@
 
 
 /mob/proc/reagent_check(datum/reagent/R) // utilized in the species code
-	return 1
+	return TRUE
 
 
 /**
@@ -430,7 +430,7 @@
 			if(flashwindow)
 				window_flash(O.client)
 			if(source)
-				var/obj/screen/alert/notify_action/A = O.throw_alert("[REF(source)]_notify_action", /obj/screen/alert/notify_action)
+				var/atom/movable/screen/alert/notify_action/A = O.throw_alert("[REF(source)]_notify_action", /atom/movable/screen/alert/notify_action)
 				if(A)
 					if(O.client.prefs && O.client.prefs.UI_style)
 						A.icon = ui_style2icon(O.client.prefs.UI_style)
@@ -450,17 +450,17 @@
   */
 /proc/item_heal_robotic(mob/living/carbon/human/H, mob/user, brute_heal, burn_heal)
 	var/obj/item/bodypart/affecting = H.get_bodypart(check_zone(user.zone_selected))
-	if(affecting?.status == BODYPART_ROBOTIC)
+	if(affecting && (!IS_ORGANIC_LIMB(affecting)))
 		var/dam //changes repair text based on how much brute/burn was supplied
 		if(brute_heal > burn_heal)
 			dam = 1
 		else
 			dam = 0
 		if((brute_heal > 0 && affecting.brute_dam > 0) || (burn_heal > 0 && affecting.burn_dam > 0))
-			if(affecting.heal_damage(brute_heal, burn_heal, 0, BODYPART_ROBOTIC))
+			if(affecting.heal_damage(brute_heal, burn_heal, 0, BODYTYPE_ROBOTIC))
 				H.update_damage_overlays()
-			user.visible_message("[user] has fixed some of the [dam ? "dents on" : "burnt wires in"] [H]'s [affecting.name].", \
-			"<span class='notice'>You fix some of the [dam ? "dents on" : "burnt wires in"] [H == user ? "your" : "[H]'s"] [affecting.name].</span>")
+			user.visible_message("[user] has fixed some of the [dam ? "dents on" : "burnt wires in"] [H]'s [parse_zone(affecting.body_zone)].", \
+			"<span class='notice'>You fix some of the [dam ? "dents on" : "burnt wires in"] [H == user ? "your" : "[H]'s"] [parse_zone(affecting.body_zone)].</span>")
 			return 1 //successful heal
 		else
 			to_chat(user, "<span class='warning'>[affecting] is already in good condition!</span>")
@@ -522,9 +522,8 @@
 ///Clicks a random nearby mob with the source from this mob
 /mob/proc/click_random_mob()
 	var/list/nearby_mobs = list()
-	for(var/mob/living/L in range(1, src))
-		if(L!=src)
-			nearby_mobs |= L
+	for(var/mob/living/L in oview(1, src))
+		nearby_mobs |= L
 	if(nearby_mobs.len)
 		var/mob/living/T = pick(nearby_mobs)
 		ClickOn(T)
@@ -533,6 +532,9 @@
 /mob/log_message(message, message_type, color=null, log_globally = TRUE)
 	if(!LAZYLEN(message))
 		stack_trace("Empty message")
+		return
+
+	if(SSticker.current_state == GAME_STATE_FINISHED && message_type == LOG_ATTACK)
 		return
 
 	// Cannot use the list as a map if the key is a number, so we stringify it (thank you BYOND)
@@ -552,7 +554,18 @@
 		else
 			colored_message = "<font color='[color]'>[message]</font>"
 
-	var/list/timestamped_message = list("[LAZYLEN(logging[smessage_type]) + 1]\[[time_stamp()]\] [key_name(src)] [loc_name(src)]" = colored_message)
+	//This makes readability a bit better for admins.
+	switch(message_type)
+		if(LOG_WHISPER)
+			colored_message = "(WHISPER) [colored_message]"
+		if(LOG_OOC)
+			colored_message = "(OOC) [colored_message]"
+		if(LOG_ASAY)
+			colored_message = "(ASAY) [colored_message]"
+		if(LOG_EMOTE)
+			colored_message = "(EMOTE) [colored_message]"
+
+	var/list/timestamped_message = list("\[[time_stamp()]\] [key_name(src)] [loc_name(src)] (Event #[LAZYLEN(logging[smessage_type])])" = colored_message)
 
 	logging[smessage_type] += timestamped_message
 
@@ -576,3 +589,22 @@
 /mob/proc/common_trait_examine()
 	if(HAS_TRAIT(src, TRAIT_DISSECTED))
 		. += "<span class='notice'>This body has been dissected and analyzed. It is no longer worth experimenting on.</span><br>"
+
+//Can the mob see reagents inside of containers?
+/mob/proc/can_see_reagents()
+	. = FALSE
+	if(stat == DEAD) // Dead guys and silicons can always see reagents
+		return TRUE
+	else if(has_unlimited_silicon_privilege)
+		return TRUE
+	else if(HAS_TRAIT(src, TRAIT_BARMASTER)) // If they're a bar master, they know what reagents are at a glance
+		return TRUE
+
+/mob/proc/can_see_boozepower() // same rule above
+	. = FALSE
+	if(stat == DEAD)
+		return TRUE
+	else if(has_unlimited_silicon_privilege)
+		return TRUE
+	else if(HAS_TRAIT(src, TRAIT_BARMASTER))
+		return TRUE

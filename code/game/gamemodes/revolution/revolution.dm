@@ -13,11 +13,13 @@
 	report_type = "revolution"
 	antag_flag = ROLE_REV
 	false_report_weight = 10
-	restricted_jobs = list("Security Officer", "Warden", "Detective", "AI", "Cyborg","Captain", "Head of Personnel", "Head of Security", "Chief Engineer", "Research Director", "Chief Medical Officer", "Brig Physician", "Master At Arms") //NSV13 - MAA added
+	restricted_jobs = list(JOB_NAME_SECURITYOFFICER, JOB_NAME_WARDEN, JOB_NAME_DETECTIVE, JOB_NAME_AI, JOB_NAME_CYBORG,JOB_NAME_CAPTAIN, JOB_NAME_HEADOFPERSONNEL, JOB_NAME_HEADOFSECURITY, JOB_NAME_CHIEFENGINEER, JOB_NAME_RESEARCHDIRECTOR, JOB_NAME_CHIEFMEDICALOFFICER, JOB_NAME_MASTERATARMS) //NSV13 - added MAA
+	required_jobs = list(list(JOB_NAME_CAPTAIN=1),list(JOB_NAME_HEADOFPERSONNEL=1),list(JOB_NAME_HEADOFSECURITY=1),list(JOB_NAME_CHIEFENGINEER=1),list(JOB_NAME_RESEARCHDIRECTOR=1),list(JOB_NAME_CHIEFMEDICALOFFICER=1),list(JOB_NAME_MASTERATARMS=1)) //Any head present //NSV13 - added MAA
 	required_players = 30
 	required_enemies = 2
 	recommended_enemies = 3
 	enemy_minimum_age = 14
+	title_icon = "revolution"
 
 	announce_span = "danger"
 	announce_text = "Some crewmembers are attempting a coup!\n\
@@ -48,7 +50,7 @@
 		restricted_jobs += protected_jobs
 
 	if(CONFIG_GET(flag/protect_assistant_from_antagonist))
-		restricted_jobs += "Assistant"
+		restricted_jobs += JOB_NAME_ASSISTANT
 
 	for (var/i=1 to max_headrevs)
 		if (antag_candidates.len==0)
@@ -118,7 +120,6 @@
 		if(!finished)
 			SSticker.mode.check_win()
 		check_counter = 0
-	return FALSE
 
 //////////////////////////////////////
 //Checks if the revs have won or not//
@@ -128,7 +129,6 @@
 		finished = 1
 	else if(check_heads_victory())
 		finished = 2
-	return
 
 ///////////////////////////////
 //Checks if the round is over//
@@ -138,7 +138,7 @@
 		if(finished)
 			SSshuttle.clearHostileEnvironment(src)
 		return ..()
-	if(finished != 0 && end_when_heads_dead)
+	if(finished && end_when_heads_dead)
 		return TRUE
 	else
 		return ..()
@@ -211,7 +211,7 @@
 	return ..()
 
 /datum/game_mode/revolution/speedy/process()
-	. = ..()
+	..()
 	if(check_counter == 0)
 		if (world.time > endtime && !fuckingdone)
 			fuckingdone = TRUE

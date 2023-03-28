@@ -4,14 +4,14 @@
 	icon_state = "chronohelmet"
 	item_state = "chronohelmet"
 	slowdown = 1
-	armor = list("melee" = 60, "bullet" = 60, "laser" = 60, "energy" = 60, "bomb" = 30, "bio" = 90, "rad" = 90, "fire" = 100, "acid" = 100)
+	armor = list("melee" = 60, "bullet" = 60, "laser" = 60, "energy" = 60, "bomb" = 30, "bio" = 90, "rad" = 90, "fire" = 100, "acid" = 100, "stamina" = 70)
 	resistance_flags = FIRE_PROOF | ACID_PROOF
 	var/obj/item/clothing/suit/space/chronos/suit
 
 /obj/item/clothing/head/helmet/space/chronos/dropped()
+	..()
 	if(suit)
 		suit.deactivate(1, 1)
-	..()
 
 /obj/item/clothing/head/helmet/space/chronos/Destroy()
 	dropped()
@@ -24,19 +24,19 @@
 	icon_state = "chronosuit"
 	item_state = "chronosuit"
 	actions_types = list(/datum/action/item_action/toggle)
-	armor = list("melee" = 60, "bullet" = 60, "laser" = 60, "energy" = 60, "bomb" = 30, "bio" = 90, "rad" = 90, "fire" = 100, "acid" = 1000)
+	armor = list("melee" = 60, "bullet" = 60, "laser" = 60, "energy" = 60, "bomb" = 30, "bio" = 90, "rad" = 90, "fire" = 100, "acid" = 1000, "stamina" = 70)
 	resistance_flags = FIRE_PROOF | ACID_PROOF
 	var/list/chronosafe_items = list(/obj/item/chrono_eraser, /obj/item/gun/energy/chrono_gun)
 	var/obj/item/clothing/head/helmet/space/chronos/helmet
 	var/obj/effect/chronos_cam/camera
 	var/datum/action/innate/chrono_teleport/teleport_now = new
-	var/activating = 0
-	var/activated = 0
-	var/cooldowntime = 50 //deciseconds
-	var/teleporting = 0
+	var/activating = FALSE
+	var/activated = FALSE
+	var/cooldowntime = 5 SECONDS
+	var/teleporting = FALSE
 	var/phase_timer_id
 
-/obj/item/clothing/suit/space/chronos/Initialize()
+/obj/item/clothing/suit/space/chronos/Initialize(mapload)
 	teleport_now.chronosuit = src
 	teleport_now.target = src
 	return ..()
@@ -59,12 +59,13 @@
 			deactivate()
 
 /obj/item/clothing/suit/space/chronos/dropped()
+	..()
 	if(activated)
 		deactivate()
-	..()
 
 /obj/item/clothing/suit/space/chronos/Destroy()
 	dropped()
+	QDEL_NULL(teleport_now)
 	return ..()
 
 /obj/item/clothing/suit/space/chronos/emp_act(severity)
@@ -85,18 +86,18 @@
 		user = src.loc
 	if(phase_timer_id)
 		deltimer(phase_timer_id)
-		phase_timer_id = 0
+		phase_timer_id = null
 	if(istype(user))
-		if(to_turf)
+		if(to_turf) // we will not be using do_teleport because spacetime
 			user.forceMove(to_turf)
 		user.SetStun(0)
 		user.next_move = 1
 		user.alpha = 255
 		user.update_atom_colour()
 		user.animate_movement = FORWARD_STEPS
-		user.notransform = 0
+		user.notransform = FALSE
 		user.anchored = FALSE
-		teleporting = 0
+		teleporting = FALSE
 		for(var/obj/item/I in user.held_items)
 			REMOVE_TRAIT(I, TRAIT_NODROP, CHRONOSUIT_TRAIT)
 		if(camera)
@@ -119,7 +120,7 @@
 
 		teleport_now.UpdateButtonIcon()
 
-		var/list/nonsafe_slots = list(SLOT_BELT, SLOT_BACK)
+		var/list/nonsafe_slots = list(ITEM_SLOT_BELT, ITEM_SLOT_BACK)
 		var/list/exposed = list()
 		for(var/slot in nonsafe_slots)
 			var/obj/item/slot_item = user.get_item_by_slot(slot)
@@ -171,7 +172,7 @@
 		if(user && ishuman(user) && (user.wear_suit == src))
 			if(camera && (user.remote_control == camera))
 				if(!teleporting)
-					if(camera.loc != user && ((camera.x != user.x) || (camera.y != user.y) || (camera.z != user.z)))
+					if(camera.loc != user && ((camera.x != user.x) || (camera.y != user.y) || (camera.get_virtual_z_level() != user.get_virtual_z_level())))
 						if(camera.phase_time <= world.time)
 							chronowalk(camera)
 					else
@@ -237,6 +238,9 @@
 			REMOVE_TRAIT(helmet, TRAIT_NODROP, CHRONOSUIT_TRAIT)
 			helmet.suit = null
 			helmet = null
+		user.reset_perspective()
+		user.set_machine()
+		user.remote_control = null
 		if(camera)
 			QDEL_NULL(camera)
 
@@ -250,7 +254,7 @@
 	var/mob/holder
 	var/phase_time = 0
 	var/phase_time_length = 3
-	var/obj/screen/chronos_target/target_ui
+	var/atom/movable/screen/chronos_target/target_ui
 	var/obj/item/clothing/suit/space/chronos/chronosuit
 
 /obj/effect/chronos_cam/singularity_act()
@@ -260,7 +264,7 @@
 	return
 
 /obj/effect/chronos_cam/proc/create_target_ui()
-	if(holder && holder.client && chronosuit)
+	if(holder?.client && chronosuit)
 		if(target_ui)
 			remove_target_ui()
 		target_ui = new(src, holder)
@@ -270,7 +274,7 @@
 	if(target_ui)
 		QDEL_NULL(target_ui)
 
-/obj/effect/chronos_cam/relaymove(var/mob/user, direction)
+/obj/effect/chronos_cam/relaymove(mob/living/user, direction)
 	if(!holder)
 		qdel(src)
 		return
@@ -296,7 +300,6 @@
 
 /obj/effect/chronos_cam/check_eye(mob/user)
 	if(user != holder)
-		user.unset_machine()
 		qdel(src)
 
 /obj/effect/chronos_cam/on_unset_machine(mob/user)
@@ -310,13 +313,13 @@
 			holder.unset_machine()
 	return ..()
 
-/obj/screen/chronos_target
+/atom/movable/screen/chronos_target
 	name = "target display"
 	screen_loc = "CENTER,CENTER"
 	color = list(1,0,0,0, 0,1,0,0.8, 0,0,1,0.933, 0,0,0,0, 0,0,0,0)
 	appearance_flags = KEEP_TOGETHER|TILE_BOUND|PIXEL_SCALE
 
-/obj/screen/chronos_target/Initialize(mapload, mob/living/carbon/human/user)
+/atom/movable/screen/chronos_target/Initialize(mapload, mob/living/carbon/human/user)
 	if(user)
 		vis_contents += user
 	else
@@ -329,6 +332,10 @@
 	button_icon_state = "chrono_phase"
 	check_flags = AB_CHECK_CONSCIOUS //|AB_CHECK_INSIDE
 	var/obj/item/clothing/suit/space/chronos/chronosuit = null
+
+/datum/action/innate/chrono_teleport/Destroy()
+	chronosuit = null
+	return ..()
 
 /datum/action/innate/chrono_teleport/IsAvailable()
 	return (chronosuit && chronosuit.activated && chronosuit.camera && !chronosuit.teleporting)

@@ -23,7 +23,7 @@
 	var/range = 7
 	var/power = 3
 
-/obj/structure/etherealball/Initialize()
+/obj/structure/etherealball/Initialize(mapload)
 	. = ..()
 	update_icon()
 
@@ -37,7 +37,6 @@
 		to_chat(user, "<span class='notice'>You turn the disco ball on!</span>")
 
 /obj/structure/etherealball/AltClick(mob/living/carbon/human/user)
-	. = ..()
 	if(anchored)
 		to_chat(user, "<span class='notice'>You unlock the disco ball.</span>")
 		anchored = FALSE

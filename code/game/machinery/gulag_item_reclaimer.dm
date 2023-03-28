@@ -8,10 +8,8 @@
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 100
 	active_power_usage = 2500
-	ui_x = 325
-	ui_y = 400
 	var/list/stored_items = list()
-	var/obj/machinery/gulag_teleporter/linked_teleporter = null
+	var/obj/machinery/gulag_teleporter/linked_teleporter
 
 /obj/machinery/gulag_item_reclaimer/Destroy()
 	for(var/i in contents)
@@ -26,12 +24,16 @@
 		return
 	req_access = list()
 	obj_flags |= EMAGGED
+	ui_update()
 
-/obj/machinery/gulag_item_reclaimer/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/gulag_item_reclaimer/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/gulag_item_reclaimer/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "GulagItemReclaimer", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "GulagItemReclaimer")
 		ui.open()
 
 /obj/machinery/gulag_item_reclaimer/ui_data(mob/user)
@@ -43,8 +45,8 @@
 
 	var/obj/item/card/id/I = user.get_idcard(TRUE)
 	if(istype(I, /obj/item/card/id/prisoner))
-		var/obj/item/card/id/prisoner/P = I
-		if(P.points >= P.goal)
+		var/obj/item/card/id/prisoner/prisonerID = I
+		if(prisonerID.points >= prisonerID.goal && !prisonerID.permanent)
 			can_reclaim = TRUE
 
 	var/list/mobs = list()

@@ -37,14 +37,14 @@
 			reagents.clear_reagents()
 		else
 			if(M != user)
-				M.visible_message("<span class='danger'>[user] attempts to feed [M] something.</span>", \
-							"<span class='userdanger'>[user] attempts to feed you something.</span>")
+				M.visible_message("<span class='danger'>[user] attempts to feed [M] something from [src].</span>", \
+						"<span class='userdanger'>[user] attempts to feed you something from [src].</span>")
 				if(!do_mob(user, M))
 					return
 				if(!reagents || !reagents.total_volume)
 					return // The drink might be empty after the delay, such as by spam-feeding
-				M.visible_message("<span class='danger'>[user] feeds [M] something.</span>", \
-							"<span class='userdanger'>[user] feeds you something.</span>")
+				M.visible_message("<span class='danger'>[user] feeds [M] something from [src].</span>", \
+						"<span class='userdanger'>[user] feeds you something from [src].</span>")
 				log_combat(user, M, "fed", reagents.log_list())
 			else
 				to_chat(user, "<span class='notice'>You swallow a gulp of [src].</span>")
@@ -120,7 +120,7 @@
 	custom_materials = list(/datum/material/glass=500)
 	fill_icon_thresholds = list(0, 10, 25, 50, 75, 80, 90)
 
-/obj/item/reagent_containers/glass/beaker/Initialize()
+/obj/item/reagent_containers/glass/beaker/Initialize(mapload)
 	. = ..()
 	update_icon()
 
@@ -230,16 +230,16 @@
 	flags_inv = HIDEHAIR
 	slot_flags = ITEM_SLOT_HEAD
 	resistance_flags = NONE
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 75, "acid" = 50) //Weak melee protection, because you can wear it on your head
+	armor = list("melee" = 10, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 75, "acid" = 50, "stamina" = 0) //Weak melee protection, because you can wear it on your head
 	slot_equipment_priority = list( \
-		SLOT_BACK, SLOT_WEAR_ID,\
-		SLOT_W_UNIFORM, SLOT_WEAR_SUIT,\
-		SLOT_WEAR_MASK, SLOT_HEAD, SLOT_NECK,\
-		SLOT_SHOES, SLOT_GLOVES,\
-		SLOT_EARS, SLOT_GLASSES,\
-		SLOT_BELT, SLOT_S_STORE,\
-		SLOT_L_STORE, SLOT_R_STORE,\
-		SLOT_GENERC_DEXTROUS_STORAGE
+		ITEM_SLOT_BACK, ITEM_SLOT_ID,\
+		ITEM_SLOT_ICLOTHING, ITEM_SLOT_OCLOTHING,\
+		ITEM_SLOT_MASK, ITEM_SLOT_HEAD, ITEM_SLOT_NECK,\
+		ITEM_SLOT_FEET, ITEM_SLOT_GLOVES,\
+		ITEM_SLOT_EARS, ITEM_SLOT_EYES,\
+		ITEM_SLOT_BELT, ITEM_SLOT_SUITSTORE,\
+		ITEM_SLOT_LPOCKET, ITEM_SLOT_RPOCKET,\
+		ITEM_SLOT_DEX_STORAGE
 	)
 
 /obj/item/reagent_containers/glass/bucket/attackby(obj/O, mob/user, params)
@@ -260,7 +260,7 @@
 
 /obj/item/reagent_containers/glass/bucket/equipped(mob/user, slot)
 	..()
-	if (slot == SLOT_HEAD)
+	if (slot == ITEM_SLOT_HEAD)
 		if(reagents.total_volume)
 			to_chat(user, "<span class='userdanger'>[src]'s contents spill all over you!</span>")
 			reagents.reaction(user, TOUCH)
@@ -268,15 +268,15 @@
 		reagents.flags = NONE
 
 /obj/item/reagent_containers/glass/bucket/dropped(mob/user)
-	. = ..()
+	..()
 	reagents.flags = initial(reagent_flags)
 
 /obj/item/reagent_containers/glass/bucket/equip_to_best_slot(var/mob/M)
 	if(reagents.total_volume) //If there is water in a bucket, don't quick equip it to the head
-		var/index = slot_equipment_priority.Find(SLOT_HEAD)
-		slot_equipment_priority.Remove(SLOT_HEAD)
+		var/index = slot_equipment_priority.Find(ITEM_SLOT_HEAD)
+		slot_equipment_priority.Remove(ITEM_SLOT_HEAD)
 		. = ..()
-		slot_equipment_priority.Insert(index, SLOT_HEAD)
+		slot_equipment_priority.Insert(index, ITEM_SLOT_HEAD)
 		return
 	return ..()
 
@@ -299,7 +299,7 @@
 	var/mutable_appearance/cap_overlay
 	var/flip_chance = 10
 
-/obj/item/reagent_containers/glass/waterbottle/Initialize()
+/obj/item/reagent_containers/glass/waterbottle/Initialize(mapload)
 	. = ..()
 	cap_overlay = mutable_appearance(icon, cap_icon_state)
 	if(cap_on)
@@ -316,11 +316,10 @@
 		. += "<span class='notice'>The cap has been taken off. Alt-click to put a cap on.</span>"
 
 /obj/item/reagent_containers/glass/waterbottle/AltClick(mob/user)
-	. = ..()
 	if(cap_lost)
 		to_chat(user, "<span class='warning'>The cap seems to be missing! Where did it go?</span>")
 		return
-	
+
 	var/fumbled = HAS_TRAIT(user, TRAIT_CLUMSY) && prob(5)
 	if(cap_on || fumbled)
 		cap_on = FALSE
@@ -359,7 +358,7 @@
 	if(cap_on && (target.is_refillable() || target.is_drainable() || (reagents.total_volume && user.a_intent == INTENT_HARM)))
 		to_chat(user, "<span class='warning'>You must remove the cap before you can do that!</span>")
 		return
-	
+
 	else if(istype(target, /obj/item/reagent_containers/glass/waterbottle))
 		var/obj/item/reagent_containers/glass/waterbottle/WB = target
 		if(WB.cap_on)
@@ -377,7 +376,7 @@
 			animate(src, transform = matrix(prob(50)? 90 : -90, MATRIX_ROTATE), time = 3, loop = 0)
 
 /obj/item/reagent_containers/glass/waterbottle/pickup(mob/user)
-	. = ..()
+	..()
 	animate(src, transform = null, time = 1, loop = 0)
 
 /obj/item/reagent_containers/glass/waterbottle/empty

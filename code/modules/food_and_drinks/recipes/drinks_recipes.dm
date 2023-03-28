@@ -266,10 +266,22 @@
 	required_reagents = list(/datum/reagent/consumable/ethanol/gin = 2, /datum/reagent/consumable/sodawater = 1, /datum/reagent/consumable/limejuice = 1)
 
 /datum/chemical_reaction/bahama_mama
-	name = "Bahama mama"
+	name = "Bahama Mama"
 	id = /datum/reagent/consumable/ethanol/bahama_mama
-	results = list(/datum/reagent/consumable/ethanol/bahama_mama = 6)
-	required_reagents = list(/datum/reagent/consumable/ethanol/rum = 2, /datum/reagent/consumable/orangejuice = 2, /datum/reagent/consumable/limejuice = 1, /datum/reagent/consumable/ice = 1)
+	results = list(/datum/reagent/consumable/ethanol/bahama_mama = 5)
+	required_reagents = list(/datum/reagent/consumable/ethanol/creme_de_coconut = 1, /datum/reagent/consumable/ethanol/kahlua = 1, /datum/reagent/consumable/ethanol/rum = 2, /datum/reagent/consumable/pineapplejuice = 1)
+
+/datum/chemical_reaction/painkiller
+	name = "Painkiller"
+	id = /datum/reagent/consumable/ethanol/painkiller
+	results = list(/datum/reagent/consumable/ethanol/painkiller = 10)
+	required_reagents = list(/datum/reagent/consumable/ethanol/creme_de_coconut = 5, /datum/reagent/consumable/pineapplejuice = 4, /datum/reagent/consumable/orangejuice = 1)
+
+/datum/chemical_reaction/pina_colada
+	name = "Pina Colada"
+	id = /datum/reagent/consumable/ethanol/pina_colada
+	results = list(/datum/reagent/consumable/ethanol/pina_colada = 5)
+	required_reagents = list(/datum/reagent/consumable/ethanol/creme_de_coconut = 1, /datum/reagent/consumable/pineapplejuice = 3, /datum/reagent/consumable/ethanol/rum = 1, /datum/reagent/consumable/limejuice = 1)
 
 /datum/chemical_reaction/singulo
 	name = "Singulo"
@@ -563,7 +575,7 @@
 	name = "chocolate milk"
 	id = /datum/reagent/consumable/milk/chocolate_milk
 	results = list(/datum/reagent/consumable/milk/chocolate_milk = 2)
-	required_reagents = list(/datum/reagent/consumable/milk = 1, /datum/reagent/consumable/coco = 1)
+	required_reagents = list(/datum/reagent/consumable/milk = 1, /datum/reagent/consumable/cocoa = 1)
 	mix_message = "The color changes as the mixture blends smoothly."
 
 /datum/chemical_reaction/eggnog
@@ -606,7 +618,7 @@
 	id = /datum/reagent/consumable/ethanol/quintuple_sec
 	results = list(/datum/reagent/consumable/ethanol/quintuple_sec = 15)
 	required_reagents = list(/datum/reagent/consumable/ethanol/quadruple_sec = 5, /datum/reagent/consumable/clownstears = 5, /datum/reagent/consumable/ethanol/syndicatebomb = 5)
-	mix_message = "Judgement is upon you."
+	mix_message = "Judgment is upon you."
 	mix_sound = 'sound/items/airhorn2.ogg'
 
 /datum/chemical_reaction/bastion_bourbon
@@ -656,8 +668,8 @@
 	name = "Peppermint Patty"
 	id = /datum/reagent/consumable/ethanol/peppermint_patty
 	results = list(/datum/reagent/consumable/ethanol/peppermint_patty = 10)
-	required_reagents = list(/datum/reagent/consumable/hot_coco = 6, /datum/reagent/consumable/ethanol/creme_de_cacao = 1, /datum/reagent/consumable/ethanol/creme_de_menthe = 1, /datum/reagent/consumable/ethanol/vodka = 1, /datum/reagent/consumable/menthol = 1)
-	mix_message = "The coco turns mint green just as the strong scent hits your nose."
+	required_reagents = list(/datum/reagent/consumable/cocoa/hot_cocoa = 6, /datum/reagent/consumable/ethanol/creme_de_cacao = 1, /datum/reagent/consumable/ethanol/creme_de_menthe = 1, /datum/reagent/consumable/ethanol/vodka = 1, /datum/reagent/consumable/menthol = 1)
+	mix_message = "The cocoa turns mint green just as the strong scent hits your nose."
 
 /datum/chemical_reaction/alexander
 	name = "Alexander"
@@ -712,7 +724,7 @@
 	name = "Blank Paper"
 	id = /datum/reagent/consumable/ethanol/blank_paper
 	results = list(/datum/reagent/consumable/ethanol/blank_paper = 3)
-	required_reagents = list(/datum/reagent/consumable/ethanol/silencer = 1, /datum/reagent/consumable/nothing = 1, /datum/reagent/consumable/nuka_cola = 1)
+	required_reagents = list(/datum/reagent/consumable/ethanol/silencer = 1, /datum/reagent/consumable/nothing = 1, /datum/reagent/consumable/nuka_cola = 1, /datum/reagent/consumable/clownstears = 1)
 
 
 /datum/chemical_reaction/wizz_fizz
@@ -840,3 +852,18 @@
 	id = /datum/reagent/consumable/ethanol/beesknees
 	results = list(/datum/reagent/consumable/ethanol/beesknees = 4)
 	required_reagents = list(/datum/reagent/consumable/ethanol/mead = 1, /datum/reagent/consumable/honey = 1, /datum/reagent/consumable/ethanol/whiskey = 1, /datum/reagent/consumable/lemonjuice = 1)
+
+/datum/chemical_reaction/beeffizz
+	name = "Beef Fizz"
+	id = /datum/reagent/consumable/ethanol/beeffizz
+	results = list(/datum/reagent/consumable/ethanol/beeffizz = 10)
+	required_reagents = list(/datum/reagent/consumable/beefbroth = 7, /datum/reagent/consumable/ice = 2, /datum/reagent/consumable/lemonjuice = 1 )
+
+//NSV13
+/datum/chemical_reaction/torp_juice
+	name = "Torpedo Juice"
+	id = /datum/reagent/consumable/ethanol/torp_juice
+	results = list(/datum/reagent/consumable/ethanol/torp_juice = 5)
+	required_reagents = list(/datum/reagent/consumable/lemon_lime = 3,  /datum/reagent/consumable/ethanol = 2)
+	mix_message = "The mixture violently and loudly reacts, but settles down immediately. Almost makes you wish for a nuclear winter."
+	mix_sound = 'sound/effects/explosion1.ogg'

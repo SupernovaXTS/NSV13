@@ -8,7 +8,7 @@
 	item_state = "gas_alt"
 	gas_transfer_coefficient = 0.01
 	permeability_coefficient = 0.01
-	flags_cover = MASKCOVERSEYES | MASKCOVERSMOUTH | PEPPERPROOF
+	flags_cover = MASKCOVERSEYES | MASKCOVERSMOUTH
 	resistance_flags = NONE
 
 // **** Welding gas mask ****
@@ -20,7 +20,7 @@
 	materials = list(/datum/material/iron=4000, /datum/material/glass=2000)
 	flash_protect = 2
 	tint = 2
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 55)
+	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 55, "stamina" = 15)
 	actions_types = list(/datum/action/item_action/toggle)
 	flags_inv = HIDEEARS|HIDEEYES|HIDEFACE
 	flags_cover = MASKCOVERSEYES
@@ -33,8 +33,8 @@
 
 /obj/item/clothing/mask/gas/welding/up
 
-/obj/item/clothing/mask/gas/welding/up/Initialize()
-	..()
+/obj/item/clothing/mask/gas/welding/up/Initialize(mapload)
+	. = ..()
 	visor_toggling()
 
 // ********************************************************************
@@ -45,7 +45,7 @@
 	desc = "A modernised version of the classic design, this mask will not only filter out toxins but it can also be connected to an air supply."
 	icon_state = "plaguedoctor"
 	item_state = "gas_mask"
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 2,"energy" = 2, "bomb" = 0, "bio" = 75, "rad" = 0, "fire" = 0, "acid" = 0)
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 2,"energy" = 2, "bomb" = 0, "bio" = 75, "rad" = 0, "fire" = 0, "acid" = 0, "stamina" = 0)
 
 /obj/item/clothing/mask/gas/syndicate
 	name = "syndicate mask"
@@ -56,9 +56,10 @@
 /obj/item/clothing/mask/gas/clown_hat
 	name = "clown wig and mask"
 	desc = "A true prankster's facial attire. A clown is incomplete without his wig and mask."
-	clothing_flags = MASKINTERNALS | SHOWEROKAY
+	clothing_flags = MASKINTERNALS | SHOWEROKAY //NSV13 - kept SHOWEROKAY
 	icon_state = "clown"
 	item_state = "clown_hat"
+	dye_color = "clown"
 	flags_cover = MASKCOVERSEYES
 	resistance_flags = FLAMMABLE
 	actions_types = list(/datum/action/item_action/adjust)
@@ -74,6 +75,7 @@
 	options["The Madman"] = "joker"
 	options["The Rainbow Color"] ="rainbow"
 	options["The Jester"] ="chaos" //Nepeta33Leijon is holding me captive and forced me to help with this please send help
+	options["The Lunatic"] = "trickymask"
 
 	var/choice = input(user,"To what form do you wish to Morph this mask?","Morph Mask") in sortList(options)
 
@@ -89,7 +91,7 @@
 /obj/item/clothing/mask/gas/sexyclown
 	name = "sexy-clown wig and mask"
 	desc = "A feminine clown mask for the dabbling crossdressers or female entertainers."
-	clothing_flags = MASKINTERNALS | SHOWEROKAY
+	clothing_flags = MASKINTERNALS | SHOWEROKAY //NSV13 - kept SHOWEROKAY
 	icon_state = "sexyclown"
 	item_state = "sexyclown"
 	flags_cover = MASKCOVERSEYES
@@ -98,7 +100,7 @@
 /obj/item/clothing/mask/gas/mime
 	name = "mime mask"
 	desc = "The traditional mime's mask. It has an eerie facial posture."
-	clothing_flags = MASKINTERNALS | SHOWEROKAY
+	clothing_flags = MASKINTERNALS | SHOWEROKAY //NSV13 - kept SHOWEROKAY
 	icon_state = "mime"
 	item_state = "mime"
 	flags_cover = MASKCOVERSEYES
@@ -139,7 +141,7 @@
 /obj/item/clothing/mask/gas/sexymime
 	name = "sexy mime mask"
 	desc = "A traditional female mime's mask."
-	clothing_flags = MASKINTERNALS | SHOWEROKAY
+	clothing_flags = MASKINTERNALS | SHOWEROKAY //NSV13 - kept SHOWEROKAY
 	icon_state = "sexymime"
 	item_state = "sexymime"
 	flags_cover = MASKCOVERSEYES
@@ -210,3 +212,8 @@
 	item_state = "hunter"
 	resistance_flags = FIRE_PROOF | ACID_PROOF
 	flags_inv = HIDEFACIALHAIR|HIDEFACE|HIDEEYES|HIDEEARS|HIDEHAIR
+
+/obj/item/clothing/mask/gas/old
+	desc = "A face-covering mask that can be connected to an air supply. This one appears to be one of the older models."
+	icon_state = "gas_alt_old"
+	item_state = "gas_alt_old"

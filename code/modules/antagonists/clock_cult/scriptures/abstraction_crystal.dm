@@ -10,7 +10,7 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 /datum/clockcult/scripture/create_structure/abstraction_crystal
 	name = "Abstraction Crystal"
 	desc = "Summons an Abstraction Crystal, which allows servants to manifest themself to protect the nearby area."
-	tip = "Upon your manifestation taking damage, you will only recieve 40% of the damage."
+	tip = "Upon your manifestation taking damage, you will only receive 40% of the damage."
 	button_icon_state = "Clockwork Obelisk"
 	power_cost = 750
 	invokation_time = 50
@@ -19,13 +19,14 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 	cogs_required = 5
 	category = SPELLTYPE_STRUCTURES
 
-/datum/clockcult/scripture/create_structure/abstraction_crystal/check_special_requirements()
+/datum/clockcult/scripture/create_structure/abstraction_crystal/check_special_requirements(mob/user)
 	if(!..())
 		return FALSE
-	for(var/obj/structure/destructible/clockwork/structure in get_turf(invoker))
+	var/obj/structure/destructible/clockwork/structure = locate() in get_turf(invoker)
+	if(structure)
 		to_chat(invoker, "<span class='brass'>You cannot invoke that here, the tile is occupied by [structure].</span>")
 		return FALSE
-	for(var/obj/structure/destructible/clockwork/abstraction_crystal/AC in range(5))
+	if(locate(/obj/structure/destructible/clockwork/abstraction_crystal) in range(5))
 		to_chat(invoker, "<span class='brass'>There is an Abstraction Crystal nearby, you cannot place this here.</span>")
 		return FALSE
 	return TRUE
@@ -47,7 +48,7 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 
 //=============
 // A human that can do human things, however it is linked to a crystal
-// Instead of recieving damage normally, damage is applied to the crystal
+// Instead of receiving damage normally, damage is applied to the crystal
 // and this mobs health is equal to the health of the crystal
 //=============
 
@@ -56,7 +57,7 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 	var/mob/living/owner
 	var/last_check_health = 0
 
-/mob/living/carbon/human/abstraction_hologram/Initialize()
+/mob/living/carbon/human/abstraction_hologram/Initialize(mapload)
 	. = ..()
 	ADD_TRAIT(src, TRAIT_IGNOREDAMAGESLOWDOWN, ABSTRACTION_HOLOGRAM_TRAIT)
 	ADD_TRAIT(src, TRAIT_NODISMEMBER, ABSTRACTION_HOLOGRAM_TRAIT)
@@ -110,7 +111,7 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 	desc = "An other-worldly structure, its lattice pulsating with a bright, pulsating light."
 	icon_state = "obelisk_inactive"
 	clockwork_desc = "A powerful crystal allowing the user to manifest themselves at other abstraction crystals."
-	max_integrity = 100
+	max_integrity = 200
 	break_message = "<span class='warning'>The crystal explodes into a shower of shards!</span>"
 	var/key_word = ""
 	var/mob/living/activator
@@ -119,7 +120,7 @@ GLOBAL_LIST_INIT(abstraction_crystals, list())
 	var/processing = FALSE
 	var/dusting_hologram = FALSE	//Prevents us from crashing the game by dusting a hologram being dusted
 
-/obj/structure/destructible/clockwork/abstraction_crystal/Initialize()
+/obj/structure/destructible/clockwork/abstraction_crystal/Initialize(mapload)
 	. = ..()
 	tracked_items = list()
 

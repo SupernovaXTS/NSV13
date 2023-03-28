@@ -53,16 +53,9 @@
 	req_access = list(ACCESS_ATMOSPHERICS)
 	max_integrity = 250
 	integrity_failure = 80
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 90, "acid" = 30)
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 90, "acid" = 30, "stamina" = 0)
 	resistance_flags = FIRE_PROOF
-
-	FASTDMM_PROP(\
-		set_instance_vars(\
-			pixel_x = (dir & 3)? INSTANCE_VAR_DEFAULT : (dir == 4 ? -24 : 24),\
-			pixel_y = (dir & 3)? (dir == 1 ? -24 : 24) : INSTANCE_VAR_DEFAULT\
-        ),\
-		dir_amount = 4\
-    )
+	layer = ABOVE_WINDOW_LAYER
 
 	var/cyclestate = AIRLOCK_CYCLESTATE_INOPEN
 	var/interior_pressure = ONE_ATMOSPHERE
@@ -157,7 +150,7 @@
 	var/maxpressure = (exterior_pressure && (cyclestate == AIRLOCK_CYCLESTATE_OUTCLOSING || cyclestate == AIRLOCK_CYCLESTATE_OUTOPENING || cyclestate == AIRLOCK_CYCLESTATE_OUTOPEN)) ? exterior_pressure : interior_pressure
 	var/pressure_bars = round(pressure / maxpressure * 5 + 0.01)
 
-	var/new_overlays_hash = "[pressure_bars]-[cyclestate]-[buildstage]-[panel_open]-[stat]-[shorted]-[locked]-\ref[vis_target]"
+	var/new_overlays_hash = "[pressure_bars]-[cyclestate]-[buildstage]-[panel_open]-[machine_stat]-[shorted]-[locked]-\ref[vis_target]"
 	if(use_hash && new_overlays_hash == overlays_hash)
 		return
 	overlays_hash = new_overlays_hash
@@ -175,7 +168,7 @@
 
 	icon_state = "aac"
 
-	if((stat & (NOPOWER|BROKEN)) || shorted)
+	if((machine_stat & (NOPOWER|BROKEN)) || shorted)
 		return
 
 	var/is_exterior_pressure = (cyclestate == AIRLOCK_CYCLESTATE_OUTCLOSING || cyclestate == AIRLOCK_CYCLESTATE_OUTOPENING || cyclestate == AIRLOCK_CYCLESTATE_OUTOPEN)
@@ -210,7 +203,7 @@
 				aidisabled = FALSE
 
 /obj/machinery/advanced_airlock_controller/proc/shock(mob/user, prb)
-	if((stat & (NOPOWER)))		// unpowered, no shock
+	if((machine_stat & (NOPOWER)))		// unpowered, no shock
 		return 0
 	if(!prob(prb))
 		return 0 //you lucked out, no shock for you
@@ -299,11 +292,10 @@
 		door.unbolt()
 
 /obj/machinery/advanced_airlock_controller/process()
-	. = ..()
 	process_atmos()
 
 /obj/machinery/advanced_airlock_controller/process_atmos()
-	if((stat & (NOPOWER|BROKEN)) || shorted)
+	if((machine_stat & (NOPOWER|BROKEN)) || shorted)
 		update_icon(TRUE)
 		return
 
@@ -601,11 +593,15 @@
 		return ..()
 	return UI_CLOSE
 
-/obj/machinery/advanced_airlock_controller/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/advanced_airlock_controller/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/advanced_airlock_controller/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "AdvancedAirlockController", name, 440, 650, master_ui, state)
+		ui = new(user, src, "AdvancedAirlockController")
+		ui.set_autoupdate(TRUE) // Pressure display, mode changes as part of the cycle process
 		ui.open()
 
 /obj/machinery/advanced_airlock_controller/ui_data(mob/user)
@@ -692,10 +688,12 @@
 							A.do_animate("deny")
 			if(is_allowed)
 				cycle_to(text2num(params["exterior"]))
+				. = TRUE
 		if("skip")
 			if((world.time - skip_timer) >= skip_delay && (cyclestate == AIRLOCK_CYCLESTATE_OUTCLOSING || cyclestate == AIRLOCK_CYCLESTATE_OUTOPENING || cyclestate == AIRLOCK_CYCLESTATE_INOPENING || cyclestate == AIRLOCK_CYCLESTATE_INCLOSING))
 				is_skipping = TRUE
-	if((locked && !usr.has_unlimited_silicon_privilege) || (usr.has_unlimited_silicon_privilege && aidisabled))
+				. = TRUE
+	if(!. && ((locked && !usr.has_unlimited_silicon_privilege) || (usr.has_unlimited_silicon_privilege && aidisabled)))
 		return
 	switch(action)
 		if("lock")
@@ -713,34 +711,46 @@
 				vents[vent] = curr_role & ~(role_to_toggle)
 			else
 				vents[vent] = curr_role | role_to_toggle
+			. = TRUE
 		if("set_airlock_role")
 			var/airlock = locate(params["airlock_id"])
 			if(airlock == null || airlocks[airlock] == null)
 				return
 			airlocks[airlock] = !!text2num(params["val"])
+			. = TRUE
 		if("clear_vis")
 			vis_target = null
+			. = TRUE
 		if("set_vis_vent")
 			var/vent = locate(params["vent_id"])
 			if(vent == null || vents[vent] == null)
 				return
 			vis_target = vent
+			. = TRUE
 		if("set_vis_airlock")
 			var/airlock = locate(params["airlock_id"])
 			if(airlock == null || airlocks[airlock] == null)
 				return
 			vis_target = airlock
+			. = TRUE
 		if("scan")
 			scan()
+			. = TRUE
 		if("interior_pressure")
 			interior_pressure = CLAMP(text2num(params["pressure"]), 0, ONE_ATMOSPHERE)
+			. = TRUE
 		if("exterior_pressure")
 			exterior_pressure = CLAMP(text2num(params["pressure"]), 0, ONE_ATMOSPHERE)
+			. = TRUE
 		if("depressurization_margin")
 			depressurization_margin = CLAMP(text2num(params["pressure"]), 0.15, 40)
+			. = TRUE
 		if("skip_delay")
 			skip_delay = CLAMP(text2num(params["skip_delay"]), 0, 1200)
-	update_icon(TRUE)
+			. = TRUE
+
+	if(.)
+		update_icon(TRUE)
 
 /obj/machinery/advanced_airlock_controller/proc/request_from_door(airlock)
 	var/role = airlocks[airlock]
@@ -771,21 +781,19 @@
 	skip_timer = world.time
 
 /obj/machinery/advanced_airlock_controller/AltClick(mob/user)
-	..()
 	if(!user.canUseTopic(src, !issilicon(user)) || !isturf(loc))
 		return
 	else
 		togglelock(user)
 
 /obj/machinery/advanced_airlock_controller/proc/togglelock(mob/living/user)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		to_chat(user, "<span class='warning'>It does nothing!</span>")
 	else
 		if(src.allowed(usr) && !wires.is_cut(WIRE_IDSCAN))
 			locked = !locked
 			update_icon()
 			to_chat(user, "<span class='notice'>You [ locked ? "lock" : "unlock"] the airlock controller interface.</span>")
-			updateUsrDialog()
 		else
 			to_chat(user, "<span class='danger'>Access denied.</span>")
 	return
@@ -817,7 +825,7 @@
 /obj/machinery/door/airlock
 	var/obj/machinery/advanced_airlock_controller/aac
 
-/obj/machinery/door/airlock/Initialize()
+/obj/machinery/door/airlock/Initialize(mapload)
 	. = ..()
 	update_aac_docked()
 /obj/machinery/door/airlock/Destroy()

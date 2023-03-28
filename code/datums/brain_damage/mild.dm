@@ -1,5 +1,5 @@
 //Mild traumas are the most common; they are generally minor annoyances.
-//They can be cured with mannitol and patience, although brain surgery still works.
+//They can be cured with mannitol and patience, although brain recalibration still works.
 //Most of the old brain damage effects have been transferred to the dumbness trauma.
 
 /datum/brain_trauma/mild
@@ -169,7 +169,7 @@
 	name = "Nervous Cough"
 	desc = "Patient feels a constant need to cough."
 	scan_desc = "nervous cough"
-	gain_text = "<span class='warning'>Your throat itches incessantly...</span>"
+	gain_text = "<span class='warning'>Your throat itches incessantly.</span>"
 	lose_text = "<span class='notice'>Your throat stops itching.</span>"
 
 /datum/brain_trauma/mild/nervous_cough/on_life()

@@ -1,5 +1,5 @@
 /datum/job/gimmick //gimmick var must be set to true for all gimmick jobs BUT the parent
-	title = "Gimmick"
+	title = JOB_NAME_GIMMICK
 	flag = GIMMICK
 	department_flag = CIVILIAN
 	faction = "Station"
@@ -8,48 +8,85 @@
 	supervisors = "no one"
 	selection_color = "#dddddd"
 
-	access = list( ACCESS_MAINT_TUNNELS)
+	exp_type_department = EXP_TYPE_GIMMICK
+
+	access = list(ACCESS_MAINT_TUNNELS)
 	minimal_access = list(ACCESS_MAINT_TUNNELS)
 	paycheck = PAYCHECK_ASSISTANT
 	paycheck_department = ACCOUNT_CIV
 
 	display_order = JOB_DISPLAY_ORDER_ASSISTANT
+	departments = DEPARTMENT_BITFLAG_SERVICE
+	rpg_title = "Peasant"
 
-/datum/job/gimmick/New()
-	. = ..()
-	GLOB.civilian_positions |= title
+	allow_bureaucratic_error = FALSE
+	outfit = /datum/outfit/job/gimmick
+
+/datum/outfit/job/gimmick
+	can_be_admin_equipped = FALSE // we want just the parent outfit to be unequippable since this leads to problems
 
 /datum/job/gimmick/barber
-	title = "Barber"
+	title = JOB_NAME_BARBER
 	flag = BARBER
-	outfit = /datum/outfit/job/gimmick/barber
-	access = list(ACCESS_MORGUE, ACCESS_MAINT_TUNNELS)
-	minimal_access = list(ACCESS_MORGUE, ACCESS_MAINT_TUNNELS)
+	supervisors = "the head of personnel"
+	department_head = list(JOB_NAME_HEADOFPERSONNEL)
+	department_flag = CIVILIAN
 	gimmick = TRUE
 
+	outfit = /datum/outfit/job/gimmick/barber
+
+	access = list(ACCESS_MORGUE, ACCESS_MAINT_TUNNELS)
+	minimal_access = list(ACCESS_MORGUE, ACCESS_MAINT_TUNNELS)
+	paycheck = PAYCHECK_ASSISTANT
+	paycheck_department = ACCOUNT_SRV
+
+	departments = DEPARTMENT_BITFLAG_SERVICE
+	rpg_title = "Scissorhands"
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman
+	)
+
 /datum/outfit/job/gimmick/barber
-	name = "Barber"
+	name = JOB_NAME_BARBER
 	jobtype = /datum/job/gimmick/barber
 
+	id = /obj/item/card/id/job/barber
 	belt = /obj/item/pda/unlicensed
 	ears = /obj/item/radio/headset
 	uniform = /obj/item/clothing/under/suit/sl
 	shoes = /obj/item/clothing/shoes/laceup
 	l_hand = /obj/item/storage/wallet
 	l_pocket = /obj/item/razor/straightrazor
+	can_be_admin_equipped = TRUE
 
-/datum/job/gimmick/magician
-	title = "Stage Magician"
+/datum/job/gimmick/stage_magician
+	title = JOB_NAME_STAGEMAGICIAN
 	flag = MAGICIAN
-	outfit = /datum/outfit/job/gimmick/magician
-	access = list(ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
-	minimal_access = list(ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
+	supervisors = "the head of personnel"
+	department_head = list(JOB_NAME_HEADOFPERSONNEL)
+	department_flag = CIVILIAN
 	gimmick = TRUE
 
-/datum/outfit/job/gimmick/magician
-	name = "Stage Magician"
-	jobtype = /datum/job/gimmick/magician
+	outfit = /datum/outfit/job/gimmick/stage_magician
 
+	access = list(ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
+	minimal_access = list(ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
+	paycheck = PAYCHECK_MINIMAL
+	paycheck_department = ACCOUNT_SRV
+
+	departments = DEPARTMENT_BITFLAG_SERVICE
+	rpg_title = "Master Illusionist"
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman/magic
+	)
+
+/datum/outfit/job/gimmick/stage_magician
+	name = JOB_NAME_STAGEMAGICIAN
+	jobtype = /datum/job/gimmick/stage_magician
+
+	id = /obj/item/card/id/job/stage_magician
 	belt = /obj/item/pda/unlicensed
 	head = /obj/item/clothing/head/that
 	ears = /obj/item/radio/headset
@@ -59,74 +96,73 @@
 	gloves = /obj/item/clothing/gloves/color/white
 	l_hand = /obj/item/cane
 	backpack_contents = list(/obj/item/choice_beacon/magic=1)
+	can_be_admin_equipped = TRUE
 
-/datum/job/gimmick/hobo
-	title = "Debtor"
-	flag = HOBO
-	outfit = /datum/outfit/job/gimmick/hobo
-	access = list(ACCESS_MAINT_TUNNELS)
-	minimal_access = list(ACCESS_MAINT_TUNNELS)
+/datum/job/gimmick/psychiatrist
+	title = JOB_NAME_PSYCHIATRIST
+	flag = PSYCHIATRIST
+	supervisors = "the chief medical officer"
+	department_head = list(JOB_NAME_CHIEFMEDICALOFFICER)
+	department_flag = MEDSCI
 	gimmick = TRUE
 
-/datum/outfit/job/gimmick/hobo
-	name = "Debtor"
-	jobtype = /datum/job/gimmick/hobo
-	belt = /obj/item/pda/unlicensed
-	head = /obj/item/clothing/head/foilhat
-	ears = null //hobos dont start with a headset
-	uniform = /obj/item/clothing/under/pants/jeans
-	suit = /obj/item/clothing/suit/jacket
-	
+	outfit = /datum/outfit/job/gimmick/psychiatrist
 
-/datum/outfit/job/gimmick/hobo/post_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
-	..()
-	if(visualsOnly)
-		return
-	to_chat(H, "<span class='userdanger'>Although you're down on your luck, you're still a nanotrasen employee, and you are held to the same legal standards.</span>")
-	var/list/possible_drugs = list(/obj/item/storage/pill_bottle/happy, /obj/item/storage/pill_bottle/zoom, /obj/item/storage/pill_bottle/stimulant, /obj/item/storage/pill_bottle/lsd, /obj/item/storage/pill_bottle/aranesp, /obj/item/storage/pill_bottle/floorpill/full)
-	var/chosen_drugs = pick(possible_drugs)
-	var/obj/item/storage/pill_bottle/I = new chosen_drugs(src)
-	H.equip_to_slot_or_del(I,SLOT_IN_BACKPACK)
-	var/datum/martial_art/psychotic_brawling/junkie = new //this fits well, but i'm unsure about it, cuz this martial art is so fucking rng dependent i swear...
-	junkie.teach(H)
-	ADD_TRAIT(H, TRAIT_APPRAISAL, JOB_TRAIT)
-
-
-/datum/job/gimmick/shrink
-	title = "Psychiatrist"
-	flag = SHRINK
-	outfit = /datum/outfit/job/gimmick/shrink
 	access = list(ACCESS_MAINT_TUNNELS, ACCESS_MEDICAL)
 	minimal_access = list(ACCESS_MAINT_TUNNELS, ACCESS_MEDICAL)
 	paycheck = PAYCHECK_EASY
-	gimmick = TRUE
+	departments = DEPARTMENT_BITFLAG_MEDICAL
+	mind_traits = list(TRAIT_MEDICAL_METABOLISM)
 
-/datum/outfit/job/gimmick/shrink //psychiatrist doesnt get much shit, but he has more access and a cushier paycheck
-	name = "Psychiatrist"
-	jobtype = /datum/job/gimmick/shrink
+	paycheck_department = ACCOUNT_MED
+	rpg_title = "Enchanter"
 
+	mind_traits = list(TRAIT_MADNESS_IMMUNE)
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman
+	)
+
+/datum/outfit/job/gimmick/psychiatrist //psychiatrist doesnt get much shit, but he has more access and a cushier paycheck
+	name = JOB_NAME_PSYCHIATRIST
+	jobtype = /datum/job/gimmick/psychiatrist
+
+	id = /obj/item/card/id/job/psychiatrist
 	belt = /obj/item/pda/medical
 	ears = /obj/item/radio/headset/headset_med
 	uniform = /obj/item/clothing/under/suit/black
 	shoes = /obj/item/clothing/shoes/laceup
+	backpack_contents = list(/obj/item/choice_beacon/pet/ems=1)
+	can_be_admin_equipped = TRUE
 
-/datum/job/gimmick/celebrity
-	title = "VIP"
+/datum/job/gimmick/vip
+	title = JOB_NAME_VIP
 	flag = CELEBRITY
-	outfit = /datum/outfit/job/gimmick/celebrity
-	access = list(ACCESS_HEADS, ACCESS_MAINT_TUNNELS) //there is no way whatsoever this could go wrong
-	minimal_access = list(ACCESS_HEADS, ACCESS_MAINT_TUNNELS)
+	department_flag = CIVILIAN
 	gimmick = TRUE
-	paycheck = PAYCHECK_VIP //our power is being fucking rich
 
-/datum/outfit/job/gimmick/celebrity
-	name = "VIP"
-	jobtype = /datum/job/gimmick/celebrity
+	outfit = /datum/outfit/job/gimmick/vip
 
-	belt = /obj/item/pda/celebrity
+	access = list(ACCESS_MAINT_TUNNELS) //Assistants with shitloads of money, what could go wrong?
+	minimal_access = list(ACCESS_MAINT_TUNNELS)
+	paycheck = PAYCHECK_VIP  //our power is being fucking rich
+	paycheck_department = ACCOUNT_VIP //budget will never dry
+
+	departments = DEPARTMENT_BITFLAG_SERVICE // might need to be changed
+	rpg_title = "Master of Patronage"
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman/vip
+	)
+
+/datum/outfit/job/gimmick/vip
+	name = JOB_NAME_VIP
+	jobtype = /datum/job/gimmick/vip
+
+	id = /obj/item/card/id/gold/vip
+	belt = /obj/item/pda/vip
 	glasses = /obj/item/clothing/glasses/sunglasses/advanced
 	ears = /obj/item/radio/headset/heads //VIP can talk loud for no reason
 	uniform = /obj/item/clothing/under/suit/black_really
 	shoes = /obj/item/clothing/shoes/laceup
-
-	implants = list(/obj/item/implant/mindshield) //this fuck gets a mindshield, but he isn't necessarily antag-proof
+	can_be_admin_equipped = TRUE

@@ -3,7 +3,7 @@
 	Lets you read PDA and request console messages.
 */
 
-#define LINKED_SERVER_NONRESPONSIVE  (!linkedServer || (linkedServer.stat & (NOPOWER|BROKEN)))
+#define LINKED_SERVER_NONRESPONSIVE  (!linkedServer || (linkedServer.machine_stat & (NOPOWER|BROKEN)))
 
 #define MSG_MON_SCREEN_MAIN 		0
 #define MSG_MON_SCREEN_LOGS 		1
@@ -68,7 +68,7 @@
 	..()
 	GLOB.telecomms_list += src
 
-/obj/machinery/computer/message_monitor/Initialize()
+/obj/machinery/computer/message_monitor/Initialize(mapload)
 	..()
 	return INITIALIZE_HINT_LATELOAD
 
@@ -239,7 +239,6 @@
 	message = defaultmsg
 	var/datum/browser/popup = new(user, "hologram_console", name, 700, 700)
 	popup.set_content(dat)
-	popup.set_title_image(user.browse_rsc_icon(icon, icon_state))
 	popup.open()
 
 /obj/machinery/computer/message_monitor/proc/BruteForce(mob/user)

@@ -1,8 +1,7 @@
 {
-    "recommendations": [
-        "gbasood.byond-dm-language-support",
-        "platymuus.dm-langclient",
-        "EditorConfig.EditorConfig",
-        "dbaeumer.vscode-eslint"
-    ]
+	"recommendations": [
+		"Goonstation.goonstation-extpack",
+		"arcanis.vscode-zipfs",
+		"github.vscode-pull-request-github"
+	]
 }

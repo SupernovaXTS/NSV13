@@ -5,8 +5,8 @@
 /datum/game_mode/incursion
 	name = "incursion"
 	config_tag = "incursion"
-	restricted_jobs = list("AI", "Cyborg")
-	protected_jobs = list("Security Officer", "Warden", "Detective","Captain", "Head of Personnel", "Head of Security", "Chief Engineer", "Research Director", "Chief Medical Officer", "Brig Physician")
+	restricted_jobs = list(JOB_NAME_AI, JOB_NAME_CYBORG)
+	protected_jobs = list(JOB_NAME_SECURITYOFFICER, JOB_NAME_WARDEN, JOB_NAME_DETECTIVE,JOB_NAME_CAPTAIN, JOB_NAME_HEADOFPERSONNEL, JOB_NAME_HEADOFSECURITY, JOB_NAME_CHIEFENGINEER, JOB_NAME_RESEARCHDIRECTOR, JOB_NAME_CHIEFMEDICALOFFICER, JOB_NAME_MASTERATARMS) //NSV13 - added MAA
 	antag_flag = ROLE_INCURSION
 	false_report_weight = 10
 	enemy_minimum_age = 0
@@ -28,7 +28,7 @@
 	if(CONFIG_GET(flag/protect_roles_from_antagonist))
 		restricted_jobs += protected_jobs
 	if(CONFIG_GET(flag/protect_assistant_from_antagonist))
-		restricted_jobs += "Assistant"
+		restricted_jobs += JOB_NAME_ASSISTANT
 
 	var/list/datum/mind/possible_traitors = get_players_for_role(ROLE_INCURSION)
 
@@ -48,7 +48,7 @@
 		possible_traitors -= incursion
 		antag_candidates -= incursion
 		team.add_member(incursion)
-		incursion.special_role = "incursionist"
+		incursion.special_role = ROLE_INCURSION
 		incursion.restricted_roles = restricted_jobs
 		log_game("[key_name(incursion)] has been selected as a member of the incursion")
 	pre_incursionist_team = team
@@ -70,7 +70,7 @@
 /datum/game_mode/proc/update_incursion_icons_added(datum/mind/incursion_mind)
 	var/datum/atom_hud/antag/incursionhud = GLOB.huds[ANTAG_HUD_INCURSION]
 	incursionhud.join_hud(incursion_mind.current)
-	set_antag_hud(incursion_mind.current, "traitor")
+	set_antag_hud(incursion_mind.current, "incursion")
 
 /datum/game_mode/proc/update_incursion_icons_removed(datum/mind/incursion_mind)
 	var/datum/atom_hud/antag/incursionhud = GLOB.huds[ANTAG_HUD_INCURSION]

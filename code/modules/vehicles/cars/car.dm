@@ -8,7 +8,7 @@
 	var/engine_sound_length = 20 //Set this to the length of the engine sound
 	var/escape_time = 60 //Time it takes to break out of the car
 
-/obj/vehicle/sealed/car/Initialize()
+/obj/vehicle/sealed/car/Initialize(mapload)
 	. = ..()
 	var/datum/component/riding/D = LoadComponent(/datum/component/riding)
 	D.vehicle_move_delay = movedelay
@@ -63,7 +63,7 @@
 		to_chat(user, "<span class='notice'>You push against the back of [src] trunk to try and get out.</span>")
 		if(!do_after(user, escape_time, target = src))
 			return FALSE
-		to_chat(user,"<span class='danger'>[user] gets out of [src]</span>")
+		to_chat(user,"<span class='danger'>[user] gets out of [src].</span>")
 		mob_exit(M, silent)
 		return TRUE
 	mob_exit(M, silent)

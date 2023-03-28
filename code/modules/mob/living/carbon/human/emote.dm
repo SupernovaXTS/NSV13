@@ -4,51 +4,51 @@
 /datum/emote/living/carbon/human/cry
 	key = "cry"
 	key_third_person = "cries"
-	message = "cries."
+	message = "cries"
 	emote_type = EMOTE_AUDIBLE
 
 /datum/emote/living/carbon/human/dap
 	key = "dap"
 	key_third_person = "daps"
-	message = "sadly can't find anybody to give daps to, and daps themself. Shameful."
-	message_param = "give daps to %t."
+	message = "sadly can't find anybody to give daps to, and daps themself. Shameful"
+	message_param = "give daps to %t"
 	restraint_check = TRUE
 
 /datum/emote/living/carbon/human/eyebrow
 	key = "eyebrow"
-	message = "raises an eyebrow."
+	message = "raises an eyebrow"
 
 /datum/emote/living/carbon/human/grumble
 	key = "grumble"
 	key_third_person = "grumbles"
-	message = "grumbles!"
+	message = "grumbles"
 	emote_type = EMOTE_AUDIBLE
 
 /datum/emote/living/carbon/human/handshake
 	key = "handshake"
-	message = "shakes their own hands."
-	message_param = "shakes hands with %t."
+	message = "shakes their own hand"
+	message_param = "shakes hands with %t"
 	restraint_check = TRUE
 	emote_type = EMOTE_AUDIBLE
 
 /datum/emote/living/carbon/human/hug
 	key = "hug"
 	key_third_person = "hugs"
-	message = "hugs themself."
-	message_param = "hugs %t."
+	message = "hugs themself"
+	message_param = "hugs %t"
 	restraint_check = TRUE
 	emote_type = EMOTE_AUDIBLE
 
 /datum/emote/living/carbon/human/mumble
 	key = "mumble"
 	key_third_person = "mumbles"
-	message = "mumbles!"
+	message = "mumbles"
 	emote_type = EMOTE_AUDIBLE
 
 /datum/emote/living/carbon/human/scream
 	key = "scream"
 	key_third_person = "screams"
-	message = "screams!"
+	message = "screams"
 	emote_type = EMOTE_AUDIBLE
 	vary = TRUE
 
@@ -71,30 +71,30 @@
 
 /datum/emote/living/carbon/human/pale
 	key = "pale"
-	message = "goes pale for a second."
+	message = "goes pale for a second"
 
 /datum/emote/living/carbon/human/raise
 	key = "raise"
 	key_third_person = "raises"
-	message = "raises a hand."
+	message = "raises a hand"
 	restraint_check = TRUE
 
 /datum/emote/living/carbon/human/salute
 	key = "salute"
 	key_third_person = "salutes"
-	message = "salutes."
-	message_param = "salutes to %t."
+	message = "salutes"
+	message_param = "salutes to %t"
 	restraint_check = TRUE
 
 /datum/emote/living/carbon/human/shrug
 	key = "shrug"
 	key_third_person = "shrugs"
-	message = "shrugs."
+	message = "shrugs"
 
 /datum/emote/living/carbon/human/wag
 	key = "wag"
 	key_third_person = "wags"
-	message = "wags their tail."
+	message = "wags their tail"
 
 /datum/emote/living/carbon/human/wag/run_emote(mob/user, params, type_override, intentional)
 	. = ..()
@@ -125,7 +125,7 @@
 /datum/emote/living/carbon/human/wing
 	key = "wing"
 	key_third_person = "wings"
-	message = "their wings."
+	message = "their wings"
 
 /datum/emote/living/carbon/human/wing/run_emote(mob/user, params, type_override, intentional)
 	. = ..()
@@ -136,7 +136,7 @@
 /datum/emote/living/carbon/human/wing/select_message_type(mob/user, intentional)
 	. = ..()
 	var/mob/living/carbon/human/H = user
-	if("wings" in H.dna.species.mutant_bodyparts)
+	if(("wings" in H.dna.species.mutant_bodyparts) || ("moth_wings" in H.dna.species.mutant_bodyparts))
 		. = "opens " + message
 	else
 		. = "closes " + message
@@ -145,14 +145,20 @@
 	if(!..())
 		return FALSE
 	var/mob/living/carbon/human/H = user
-	if(H.dna && H.dna.species && (H.dna.features["wings"] != "None"))
-		return TRUE
+	if(H.dna && H.dna.species)
+		if(H.dna.features["wings"] != "None")
+			return TRUE
+		if(H.dna.features["moth_wings"] != "None")
+			var/obj/item/organ/wings/wings = H.getorganslot(ORGAN_SLOT_WINGS)
+			if(istype(wings))
+				if(wings.flight_level >= WINGS_FLYING)
+					return TRUE
 
 /mob/living/carbon/human/proc/Togglewings()
 	if(!dna || !dna.species)
 		return FALSE
 	var/obj/item/organ/wings/wings = getorganslot(ORGAN_SLOT_WINGS)
-	if(getorgan(/obj/item/organ/wings))
+	if(istype(wings))
 		if(wings.toggleopen(src))
 			return TRUE
 	return FALSE
@@ -161,7 +167,7 @@
 /datum/emote/living/carbon/human/fart
 	key = "fart"
 	key_third_person = "farts"
-	message = "farts!"
+	message = "farts"
 	emote_type = EMOTE_AUDIBLE
 	vary = TRUE
 
@@ -184,8 +190,8 @@
 /datum/emote/living/carbon/human/robot_tongue/beep
 	key = "beep"
 	key_third_person = "beeps"
-	message = "beeps."
-	message_param = "beeps at %t."
+	message = "beeps"
+	message_param = "beeps at %t"
 
 /datum/emote/living/carbon/human/robot_tongue/beep/run_emote(mob/user, params)
 	if(..())
@@ -194,8 +200,8 @@
 /datum/emote/living/carbon/human/robot_tongue/buzz
 	key = "buzz"
 	key_third_person = "buzzes"
-	message = "buzzes."
-	message_param = "buzzes at %t."
+	message = "buzzes"
+	message_param = "buzzes at %t"
 
 /datum/emote/living/carbon/human/robot_tongue/buzz/run_emote(mob/user, params)
 	if(..())
@@ -203,7 +209,7 @@
 
 /datum/emote/living/carbon/human/robot_tongue/buzz2
 	key = "buzz2"
-	message = "buzzes twice."
+	message = "buzzes twice"
 
 /datum/emote/living/carbon/human/robot_tongue/buzz2/run_emote(mob/user, params)
 	if(..())
@@ -212,7 +218,7 @@
 /datum/emote/living/carbon/human/robot_tongue/chime
 	key = "chime"
 	key_third_person = "chimes"
-	message = "chimes."
+	message = "chimes"
 
 /datum/emote/living/carbon/human/robot_tongue/chime/run_emote(mob/user, params)
 	if(..())
@@ -221,8 +227,8 @@
 /datum/emote/living/carbon/human/robot_tongue/ping
 	key = "ping"
 	key_third_person = "pings"
-	message = "pings."
-	message_param = "pings at %t."
+	message = "pings"
+	message_param = "pings at %t"
 
 /datum/emote/living/carbon/human/robot_tongue/ping/run_emote(mob/user, params)
 	if(..())
@@ -233,13 +239,13 @@
 /datum/emote/living/carbon/human/robot_tongue/clown/can_run_emote(mob/user, status_check = TRUE , intentional)
 	if(!..())
 		return FALSE
-	if(user.mind.assigned_role == "Clown")
+	if(user.mind.assigned_role == JOB_NAME_CLOWN)
 		return TRUE
 
 /datum/emote/living/carbon/human/robot_tongue/clown/honk
 	key = "honk"
 	key_third_person = "honks"
-	message = "honks."
+	message = "honks"
 
 /datum/emote/living/carbon/human/robot_tongue/clown/honk/run_emote(mob/user, params)
 	if(..())
@@ -247,8 +253,8 @@
 
 /datum/emote/living/carbon/human/robot_tongue/clown/sad
 	key = "sad"
-	key_third_person = "plays a sad trombone..."
-	message = "plays a sad trombone..."
+	key_third_person = "plays a sad trombone"
+	message = "plays a sad trombone"
 
 /datum/emote/living/carbon/human/robot_tongue/clown/sad/run_emote(mob/user, params)
 	if(..())

@@ -7,8 +7,8 @@
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 40
 	circuit = /obj/item/circuitboard/machine/biogenerator
-	ui_x = 550
-	ui_y = 380
+
+
 	var/processing = FALSE
 	var/obj/item/reagent_containers/glass/beaker = null
 	var/points = 0
@@ -20,7 +20,7 @@
 	/// Currently selected category in the UI
 	var/selected_cat
 
-/obj/machinery/biogenerator/Initialize()
+/obj/machinery/biogenerator/Initialize(mapload)
 	. = ..()
 	stored_research = new /datum/techweb/specialized/autounlocking/biogenerator
 	create_reagents(1000)
@@ -32,13 +32,20 @@
 /obj/machinery/biogenerator/contents_explosion(severity, target)
 	..()
 	if(beaker)
-		beaker.ex_act(severity, target)
+		switch(severity)
+			if(EXPLODE_DEVASTATE)
+				SSexplosions.high_mov_atom += beaker
+			if(EXPLODE_HEAVY)
+				SSexplosions.med_mov_atom += beaker
+			if(EXPLODE_LIGHT)
+				SSexplosions.low_mov_atom += beaker
 
 /obj/machinery/biogenerator/handle_atom_del(atom/A)
 	..()
 	if(A == beaker)
 		beaker = null
 		update_icon()
+		ui_update()
 
 /obj/machinery/biogenerator/RefreshParts()
 	var/E = 0
@@ -56,7 +63,7 @@
 /obj/machinery/biogenerator/examine(mob/user)
 	. = ..()
 	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Productivity at <b>[productivity*100]%</b>.<br>Matter consumption reduced by <b>[(efficiency*25)-25]</b>%.<br>Machine can hold up to <b>[max_items]</b> pieces of produce.<span>"
+		. += "<span class='notice'>The status display reads: Productivity at <b>[productivity*100]%</b>.<br>Matter consumption reduced by <b>[(efficiency*25)-25]</b>%.<br>Machine can hold up to <b>[max_items]</b> pieces of produce.</span>"
 
 /obj/machinery/biogenerator/on_reagent_change(changetype)			//When the reagents change, change the icon as well.
 	update_icon()
@@ -85,6 +92,7 @@
 			var/obj/item/reagent_containers/glass/B = beaker
 			B.forceMove(drop_location())
 			beaker = null
+			ui_update()
 		update_icon()
 		return
 
@@ -102,6 +110,7 @@
 				beaker = O
 				to_chat(user, "<span class='notice'>You add the container to the machine.</span>")
 				update_icon()
+				ui_update()
 		else
 			to_chat(user, "<span class='warning'>Close the maintenance panel first.</span>")
 		return
@@ -125,6 +134,7 @@
 				to_chat(user, "<span class='info'>You empty the plant bag into the biogenerator, filling it to its capacity.</span>")
 			else
 				to_chat(user, "<span class='info'>You fill the biogenerator to its capacity.</span>")
+		ui_update()
 		return TRUE //no afterattack
 
 	else if(istype(O, /obj/item/reagent_containers/food/snacks/grown))
@@ -136,24 +146,26 @@
 		else
 			if(user.transferItemToLoc(O, src))
 				to_chat(user, "<span class='info'>You put [O.name] in [src.name]</span>")
+		ui_update()
 		return TRUE //no afterattack
 	else if (istype(O, /obj/item/disk/design_disk))
 		user.visible_message("[user] begins to load \the [O] in \the [src]...",
 			"You begin to load a design from \the [O]...",
 			"You hear the chatter of a floppy drive.")
 		processing = TRUE
+		ui_update()
 		var/obj/item/disk/design_disk/D = O
 		if(do_after(user, 10, target = src))
 			for(var/B in D.blueprints)
 				if(B)
 					stored_research.add_design(B)
 		processing = FALSE
+		ui_update()
 		return TRUE
 	else
 		to_chat(user, "<span class='warning'>You cannot put this in [src.name]!</span>")
 
 /obj/machinery/biogenerator/AltClick(mob/living/user)
-	. = ..()
 	if(user.canUseTopic(src, BE_CLOSE, FALSE, NO_TK) && can_interact(user))
 		detach(user)
 
@@ -166,7 +178,7 @@
 /obj/machinery/biogenerator/proc/activate(mob/user)
 	if(user.stat != CONSCIOUS)
 		return
-	if(stat != NONE)
+	if(machine_stat != NONE)
 		return
 	if(processing)
 		to_chat(user, "<span class='warning'>The biogenerator is in the process of working.</span>")
@@ -176,16 +188,20 @@
 		S += 5
 		if(I.reagents.get_reagent_amount(/datum/reagent/consumable/nutriment) < 0.1)
 			points += 1 * productivity
+			ui_update()
 		else
 			points += I.reagents.get_reagent_amount(/datum/reagent/consumable/nutriment) * 10 * productivity
+			ui_update()
 		qdel(I)
 	if(S)
 		processing = TRUE
+		ui_update()
 		update_icon()
 		playsound(loc, 'sound/machines/blender.ogg', 50, TRUE)
 		use_power(S * 30)
 		sleep(S + 15 / productivity)
 		processing = FALSE
+		ui_update()
 		update_icon()
 
 /obj/machinery/biogenerator/proc/check_cost(list/materials, multiplier = 1, remove_points = TRUE)
@@ -196,6 +212,7 @@
 	else
 		if(remove_points)
 			points -= materials[getmaterialref(/datum/material/biomass)]*multiplier/efficiency
+			ui_update()
 		update_icon()
 		return TRUE
 
@@ -245,23 +262,26 @@
 		beaker.forceMove(drop_location())
 		beaker = null
 		update_icon()
+	ui_update()
 
 /obj/machinery/biogenerator/ui_status(mob/user)
-	if(stat & BROKEN || panel_open)
+	if(machine_stat & BROKEN || panel_open)
 		return UI_CLOSE
 	return ..()
 
-/obj/machinery/biogenerator/ui_base_html(html)
-	var/datum/asset/spritesheet/simple/assets = get_asset_datum(/datum/asset/spritesheet/research_designs)
-	. = replacetext(html, "<!--customheadhtml-->", assets.css_tag())
+/obj/machinery/biogenerator/ui_assets(mob/user)
+	return list(
+		get_asset_datum(/datum/asset/spritesheet/research_designs),
+	)
 
-/obj/machinery/biogenerator/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/biogenerator/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/biogenerator/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		var/datum/asset/assets = get_asset_datum(/datum/asset/spritesheet/research_designs)
-		assets.send(user)
-		ui = new(user, src, ui_key, "Biogenerator", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "Biogenerator")
 		ui.open()
 
 /obj/machinery/biogenerator/ui_data(mob/user)

@@ -7,7 +7,9 @@ import { round } from 'common/math';
 export const TicketMessenger = (props, context) => {
   return (
     <Window
-      theme="admin">
+      theme="admin"
+      width={620}
+      height={500}>
       <Window.Content>
         <Section
           height="85px">
@@ -163,7 +165,7 @@ export const TicketChatWindow = (props, context) => {
         height="315px">
         <Table>
           {messages.map(message => (
-            <Section
+            <Section independent
               key={message.time}>
               <Table.Row>
                 <Table.Cell>

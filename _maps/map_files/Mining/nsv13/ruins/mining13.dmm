@@ -1,7 +1,7 @@
 //MAP CONVERTED BY dmm2tgm.py THIS HEADER COMMENT PREVENTS RECONVERSION, DO NOT REMOVE
 "a" = (
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
 "b" = (
 /turf/closed/mineral,
 /area/ruin/powered)
@@ -18,10 +18,10 @@
 /obj/item/stack/tile/brass,
 /turf/open/floor/plating/asteroid/airless,
 /area/ruin/powered)
-"f" = (
-/obj/item/clockwork/weapon/ratvarian_spear,
-/turf/open/floor/plating/asteroid/airless,
-/area/ruin/powered)
+"I" = (
+/obj/effect/landmark/dropship_entry,
+/turf/template_noop,
+/area/template_noop)
 
 (1,1,1) = {"
 a
@@ -226,7 +226,7 @@ a
 a
 a
 a
-a
+I
 a
 a
 a
@@ -644,7 +644,7 @@ b
 b
 b
 b
-b
+c
 b
 b
 b
@@ -814,7 +814,7 @@ c
 c
 c
 c
-b
+c
 b
 b
 b
@@ -856,7 +856,7 @@ c
 c
 c
 c
-b
+c
 b
 b
 b
@@ -890,15 +890,15 @@ b
 b
 b
 b
-b
-b
 c
 c
 c
 c
 c
 c
-b
+c
+c
+c
 b
 b
 b
@@ -932,15 +932,15 @@ b
 b
 b
 b
-b
-b
 c
 c
 c
 c
 c
-f
-b
+c
+c
+c
+c
 b
 b
 b
@@ -975,14 +975,14 @@ b
 b
 b
 b
-b
 c
 c
 c
 c
 c
 c
-b
+c
+c
 b
 b
 a
@@ -1018,13 +1018,13 @@ b
 b
 b
 b
-b
 c
 c
 c
 c
 c
-b
+c
+c
 b
 b
 b
@@ -1060,13 +1060,13 @@ b
 b
 b
 b
-b
 c
 c
 c
 c
 c
-b
+c
+c
 b
 b
 b
@@ -1103,7 +1103,7 @@ b
 b
 b
 b
-b
+c
 c
 c
 c
@@ -1145,8 +1145,8 @@ b
 b
 b
 b
-b
-b
+c
+c
 c
 c
 c
@@ -1188,7 +1188,7 @@ b
 b
 b
 b
-b
+c
 c
 c
 c
@@ -1231,8 +1231,8 @@ b
 b
 b
 b
-b
-b
+c
+c
 b
 b
 b

@@ -46,8 +46,9 @@
 	baseturfs = /turf/open/floor/clockwork/reebe
 	var/obj/effect/clockwork/overlay/wall/realappearence
 	var/d_state = INTACT
+	flags_1 = NOJAUNT_1
 
-/turf/closed/wall/clockwork/Initialize()
+/turf/closed/wall/clockwork/Initialize(mapload)
 	. = ..()
 	new /obj/effect/temp_visual/ratvar/wall(src)
 	new /obj/effect/temp_visual/ratvar/beam(src)
@@ -122,6 +123,9 @@
 		if(COG_EXPOSED)
 			return "<span class='notice'>The inner plating has been <i>screwed</i> open. The exterior plating could be easily <b>pried</b> out.</span>"
 
+/turf/closed/wall/clockwork/try_destroy(obj/item/I, mob/user, turf/T)
+	return FALSE
+
 /turf/closed/wall/clockwork/try_decon(obj/item/I, mob/user, turf/T)
 	if(I.tool_behaviour != TOOL_WELDER)
 		return 0
@@ -172,7 +176,7 @@
 /turf/open/floor/clockwork/Bless() //Who needs holy blessings when you have DADDY RATVAR? <- I did not write this, just saying
 	return
 
-/turf/open/floor/clockwork/Initialize()
+/turf/open/floor/clockwork/Initialize(mapload)
 	. = ..()
 	if(uses_overlay)
 		new /obj/effect/temp_visual/ratvar/floor(src)
@@ -242,10 +246,6 @@
 	planetary_atmos = TRUE
 	var/list/heal_people
 
-/turf/open/floor/clockwork/reebe/Initialize()
-	. = ..()
-	heal_people = list()
-
 /turf/open/floor/clockwork/reebe/Destroy()
 	if(LAZYLEN(heal_people))
 		STOP_PROCESSING(SSprocessing, src)
@@ -257,18 +257,18 @@
 	if(istype(M) && is_servant_of_ratvar(M))
 		if(!LAZYLEN(heal_people))
 			START_PROCESSING(SSprocessing, src)
-		heal_people += M
+		LAZYADD(heal_people, M)
 
 /turf/open/floor/clockwork/reebe/Exited(atom/movable/A, atom/newloc)
 	. = ..()
 	if(A in heal_people)
-		heal_people -= A
+		LAZYREMOVE(heal_people, A)
 		if(!LAZYLEN(heal_people))
 			STOP_PROCESSING(SSprocessing, src)
 
-/turf/open/floor/clockwork/reebe/process()
+/turf/open/floor/clockwork/reebe/process(delta_time)
 	for(var/mob/living/M in heal_people)
-		M.adjustToxLoss(-2, forced=TRUE)
+		M.adjustToxLoss(-1 * delta_time, forced=TRUE)
 
 //=================================================
 //Clockwork Lattice: It's a lattice for the ratvar
@@ -337,6 +337,7 @@
 	desc = "A massive cogwheel set into two heavy slabs of brass. Contains tiny vents for allowing the flow of pressure."
 	icon = 'icons/obj/doors/airlocks/clockwork/pinion_airlock.dmi'
 	overlays_file = 'icons/obj/doors/airlocks/clockwork/overlays.dmi'
+	anim_parts = "left=-13,0;right=13,0"
 	hackProof = TRUE
 	aiControlDisabled = 1
 	req_access = list(ACCESS_CLOCKCULT)
@@ -347,8 +348,9 @@
 	air_tight = FALSE
 	CanAtmosPass = ATMOS_PASS_YES
 	var/construction_state = GEAR_SECURE //Pinion airlocks have custom deconstruction
+	allow_repaint = FALSE
 
-/obj/machinery/door/airlock/clockwork/Initialize()
+/obj/machinery/door/airlock/clockwork/Initialize(mapload)
 	. = ..()
 	new /obj/effect/temp_visual/ratvar/door(loc)
 	new /obj/effect/temp_visual/ratvar/beam/door(loc)
@@ -394,7 +396,9 @@
 	return TRUE //yes we do have power
 
 /obj/machinery/door/airlock/clockwork/obj_break(damage_flag)
-	return
+	. = ..()
+	if(!.) //not a clue if this will work out propely...
+		return
 
 /obj/machinery/door/airlock/clockwork/deconstruct(disassembled = TRUE)
 	playsound(src, 'sound/items/deconstruct.ogg', 50, 1)
@@ -455,10 +459,16 @@
 	desc = "You shall not pass."
 	icon = 'icons/effects/clockwork_effects.dmi'
 	icon_state = "servant_blocker"
+	anchored = TRUE
 
 /obj/effect/clockwork/servant_blocker/CanPass(atom/movable/mover, turf/target)
-	if(is_servant_of_ratvar(mover))
-		return FALSE
+	if(ismob(mover))
+		var/mob/M = mover
+		if(is_servant_of_ratvar(M))
+			return FALSE
+	for(var/mob/M in mover.contents)
+		if(is_servant_of_ratvar(M))
+			return FALSE
 	return ..()
 
 //=================================================
@@ -471,7 +481,7 @@
 	desc = "A strangely-shaped grille."
 	broken_type = /obj/structure/grille/ratvar/broken
 
-/obj/structure/grille/ratvar/Initialize()
+/obj/structure/grille/ratvar/Initialize(mapload)
 	. = ..()
 	if(broken)
 		new /obj/effect/temp_visual/ratvar/grille/broken(get_turf(src))
@@ -512,7 +522,7 @@
 	icon_state = "clockwork_window_single"
 	resistance_flags = FIRE_PROOF | ACID_PROOF
 	max_integrity = 80
-	armor = list("melee" = 40, "bullet" = -20, "laser" = 0, "energy" = 0, "bomb" = 25, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 100)
+	armor = list("melee" = 40, "bullet" = -20, "laser" = 0, "energy" = 0, "bomb" = 25, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 100, "stamina" = 0)
 	explosion_block = 2 //fancy AND hard to destroy. the most useful combination.
 	decon_speed = 40
 	glass_type = /obj/item/stack/tile/brass
@@ -540,6 +550,9 @@
 		color = "#960000"
 		animate(src, color = previouscolor, time = 8)
 		addtimer(CALLBACK(src, /atom/proc/update_atom_colour), 8)
+
+/obj/structure/window/reinforced/clockwork/ratvar_act()
+	return FALSE
 
 /obj/structure/window/reinforced/clockwork/unanchored
 	anchored = FALSE

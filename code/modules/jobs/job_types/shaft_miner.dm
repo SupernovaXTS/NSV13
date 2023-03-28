@@ -1,30 +1,40 @@
-/datum/job/mining
-	title = "Shaft Miner"
+/datum/job/shaft_miner
+	title = JOB_NAME_SHAFTMINER
 	flag = MINER
-	department_head = list("Executive Officer")
+	department_head = list(JOB_NAME_HEADOFPERSONNEL)
 	department_flag = CIVILIAN
 	faction = "Station"
 	total_positions = 4
 	spawn_positions = 4
-	supervisors = "the quartermaster and the Executive Officer"
+	supervisors = "the quartermaster and the " + JOB_NAME_HEADOFPERSONNEL //NSV13
 	selection_color = "#dcba97"
-	chat_color = "#CE957E"
 
 	outfit = /datum/outfit/job/miner
 
-	access = list(ACCESS_MAINT_TUNNELS, ACCESS_MAILSORTING, ACCESS_CARGO, ACCESS_QM, ACCESS_MINING, ACCESS_MECH_MINING, ACCESS_MINING_STATION, ACCESS_MINERAL_STOREROOM, ACCESS_MINING_ENGINEERING, ACCESS_MINING_BRIDGE) //Todo: Split off mining into engineer, tech, bridge staff etc.
-	minimal_access = list(ACCESS_MINING, ACCESS_MECH_MINING, ACCESS_MINING_STATION, ACCESS_MAILSORTING, ACCESS_MINERAL_STOREROOM, ACCESS_MINING_ENGINEERING, ACCESS_MINING_BRIDGE)
-	paycheck = PAYCHECK_MINIMAL
+	access = list(ACCESS_MAINT_TUNNELS, ACCESS_MAILSORTING, ACCESS_CARGO, ACCESS_QM, ACCESS_MINING, ACCESS_MECH_MINING,
+					ACCESS_MINING_STATION, ACCESS_MINERAL_STOREROOM, ACCESS_AUX_BASE,
+					ACCESS_MINING_ENGINEERING, ACCESS_MINING_BRIDGE) //NSV13 - mining ship access
+	minimal_access = list(ACCESS_MINING, ACCESS_MECH_MINING, ACCESS_MINING_STATION, ACCESS_MAILSORTING, ACCESS_MINERAL_STOREROOM,
+					ACCESS_AUX_BASE,
+					ACCESS_MINING_ENGINEERING, ACCESS_MINING_BRIDGE) //NSV13 - mining ship access
+	paycheck = PAYCHECK_HARD
 	paycheck_department = ACCOUNT_CAR
 
 	display_order = JOB_DISPLAY_ORDER_SHAFT_MINER
+	departments = DEPARTMENT_BITFLAG_CARGO
+	rpg_title = "Adventurer"
+
+	species_outfits = list(
+		SPECIES_PLASMAMAN = /datum/outfit/plasmaman/shaft_miner
+	)
 
 /datum/outfit/job/miner
-	name = "Shaft Miner"
-	jobtype = /datum/job/mining
+	name = JOB_NAME_SHAFTMINER
+	jobtype = /datum/job/shaft_miner
 
-	belt = /obj/item/pda/shaftminer
-	ears = /obj/item/radio/headset/headset_cargo/mining
+	id = /obj/item/card/id/job/shaft_miner
+	belt = /obj/item/pda/shaft_miner
+	ears = /obj/item/radio/headset/headset_cargo/shaft_miner
 	shoes = /obj/item/clothing/shoes/workboots/mining
 	gloves = /obj/item/clothing/gloves/color/black
 	uniform = /obj/item/clothing/under/rank/cargo/miner/lavaland
@@ -34,7 +44,8 @@
 		/obj/item/flashlight/seclite=1,\
 		/obj/item/kitchen/knife/combat/survival=1,\
 		/obj/item/mining_voucher=1,\
-		/obj/item/stack/marker_beacon/ten=1)
+		/obj/item/stack/marker_beacon/ten=1,\
+		/obj/item/discovery_scanner=1)
 
 	backpack = /obj/item/storage/backpack/explorer
 	satchel = /obj/item/storage/backpack/satchel/explorer
@@ -49,7 +60,7 @@
 	mask = /obj/item/clothing/mask/gas/explorer
 	glasses = /obj/item/clothing/glasses/meson
 	suit_store = /obj/item/tank/internals/oxygen
-	internals_slot = SLOT_S_STORE
+	internals_slot = ITEM_SLOT_SUITSTORE
 	backpack_contents = list(
 		/obj/item/flashlight/seclite=1,\
 		/obj/item/kitchen/knife/combat/survival=1,

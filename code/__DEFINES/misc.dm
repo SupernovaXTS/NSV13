@@ -1,46 +1,39 @@
-// Byond direction defines, because I want to put them somewhere.
-// #define NORTH 1
-// #define SOUTH 2
-// #define EAST 4
-// #define WEST 8
-
-#define TEXT_NORTH			"[NORTH]"
-#define TEXT_SOUTH			"[SOUTH]"
-#define TEXT_EAST			"[EAST]"
-#define TEXT_WEST			"[WEST]"
-
+//  The highest number of "for()" loop iterations before infinite loop detection triggers
+// +1 for "while()" loops, for some reason
+#define INFINITE_LOOP_DETECTION_THRESHOLD 1048574
 
 //Human Overlays Indexes/////////
-#define MUTATIONS_LAYER			29		//! mutations. Tk headglows, cold resistance glow, etc
-#define BODY_BEHIND_LAYER		28		//! certain mutantrace features (tail when looking south) that must appear behind the body parts
-#define BODYPARTS_LAYER			27		//! Initially "AUGMENTS", this was repurposed to be a catch-all bodyparts flag
-#define BODY_ADJ_LAYER			26		//! certain mutantrace features (snout, body markings) that must appear above the body parts
-#define BODY_LAYER				25		//! underwear, undershirts, socks, eyes, lips(makeup)
-#define FRONT_MUTATIONS_LAYER	24		//! mutations that should appear above body, body_adj and bodyparts layer (e.g. laser eyes)
-#define DAMAGE_LAYER			23		//! damage indicators (cuts and burns)
-#define UNIFORM_LAYER			22
-#define ID_LAYER				21 		//! lmao at the idiot who put both ids and hands on the same layer
-#define HANDS_PART_LAYER		20
-#define GLOVES_LAYER			19
-#define SHOES_LAYER				18
-#define EARS_LAYER				17
-#define SUIT_LAYER				16
-#define GLASSES_LAYER			15
-#define BELT_LAYER				14		//! Possible make this an overlay of somethign required to wear a belt?
-#define SUIT_STORE_LAYER		13
-#define NECK_LAYER				12
-#define BACK_LAYER				11
-#define HAIR_LAYER				10		//! TODO: make part of head layer?
-#define FACEMASK_LAYER			9
-#define HEAD_LAYER				8
-#define HANDCUFF_LAYER			7
-#define LEGCUFF_LAYER			6
-#define HANDS_LAYER				5
-#define BODY_FRONT_LAYER		4
-#define SMELL_LAYER				3
-#define HALO_LAYER				2		//! blood cult ascended halo, because there's currently no better solution for adding/removing
+#define MUTATIONS_LAYER			30		//! mutations. Tk headglows, cold resistance glow, etc
+#define BODY_BEHIND_LAYER		29		//! certain mutantrace features (tail when looking south) that must appear behind the body parts
+#define BODYPARTS_LAYER			28		//! Initially "AUGMENTS", this was repurposed to be a catch-all bodyparts flag
+#define BODY_ADJ_LAYER			27		//! certain mutantrace features (snout, body markings) that must appear above the body parts
+#define BODY_LAYER				26		//! underwear, undershirts, socks, eyes, lips(makeup)
+#define FRONT_MUTATIONS_LAYER	25		//! mutations that should appear above body, body_adj and bodyparts layer (e.g. laser eyes)
+#define DAMAGE_LAYER			24		//! damage indicators (cuts and burns)
+#define UNIFORM_LAYER			23
+#define ID_LAYER				22 		//! lmao at the idiot who put both ids and hands on the same layer
+#define HANDS_PART_LAYER		21
+#define GLOVES_LAYER			20
+#define SHOES_LAYER				19
+#define EARS_LAYER				18
+#define SUIT_LAYER				17
+#define GLASSES_LAYER			16
+#define BELT_LAYER				15		//! Possible make this an overlay of somethign required to wear a belt?
+#define SUIT_STORE_LAYER		14
+#define NECK_LAYER				13
+#define BACK_LAYER				12
+#define HAIR_LAYER				11		//! TODO: make part of head layer?
+#define FACEMASK_LAYER			10
+#define HEAD_LAYER				9
+#define HANDCUFF_LAYER			8
+#define LEGCUFF_LAYER			7
+#define HANDS_LAYER				6
+#define BODY_FRONT_LAYER		5
+#define SMELL_LAYER				4		//! NSV13 - kept hygiene, and everything above this is +1
+#define HALO_LAYER				3		//! blood cult ascended halo, because there's currently no better solution for adding/removing
+#define TYPING_LAYER			2
 #define FIRE_LAYER				1		//! If you're on fire
-#define TOTAL_LAYERS			29		//! KEEP THIS UP-TO-DATE OR SHIT WILL BREAK ;_;
+#define TOTAL_LAYERS			30		//! KEEP THIS UP-TO-DATE OR SHIT WILL BREAK ;_;
 
 //Human Overlay Index Shortcuts for alternate_worn_layer, layers
 //Because I *KNOW* somebody will think layer+1 means "above"
@@ -57,7 +50,7 @@
 #define SEC_LEVEL_GREEN	0
 #define SEC_LEVEL_BLUE	1
 #define SEC_LEVEL_RED	2
-#define SEC_LEVEL_ZEBRA 3 //takeoff zebra baby
+#define SEC_LEVEL_ZEBRA 3 //NSV13 takeoff zebra baby
 #define SEC_LEVEL_DELTA	4
 
 //some arbitrary defines to be used by self-pruning global lists. (see master_controller)
@@ -101,6 +94,7 @@
 #define CRAYON_FONT "Comic Sans MS"
 #define PRINTER_FONT "Times New Roman"
 #define SIGNFONT "Times New Roman"
+#define CHARCOAL_FONT "Candara"
 
 #define RESIZE_DEFAULT_SIZE 1
 
@@ -137,6 +131,7 @@ GLOBAL_LIST_EMPTY(bloody_footprints_cache)
 
 //suit sensors: sensor_mode defines
 
+#define SENSOR_NOT_SET -1
 #define SENSOR_OFF 0
 #define SENSOR_LIVING 1
 #define SENSOR_VITALS 2
@@ -150,11 +145,12 @@ GLOBAL_LIST_EMPTY(bloody_footprints_cache)
 #define LOCKED_SENSORS 2
 
 //Wet floor type flags. Stronger ones should be higher in number.
-#define TURF_DRY		0
-#define TURF_WET_WATER	1
-#define TURF_WET_PERMAFROST	2
-#define TURF_WET_ICE 4
-#define TURF_WET_LUBE	8
+#define TURF_DRY			(0)
+#define TURF_WET_WATER		(1<<0)
+#define TURF_WET_PERMAFROST	(1<<1)
+#define TURF_WET_ICE 		(1<<2)
+#define TURF_WET_LUBE		(1<<3)
+#define TURF_WET_SUPERLUBE	(1<<4)
 
 //Maximum amount of time, (in deciseconds) a tile can be wet for.
 #define MAXIMUM_WET_TIME 5 MINUTES
@@ -166,13 +162,14 @@ GLOBAL_LIST_EMPTY(bloody_footprints_cache)
 #define POLLTYPE_MULTI		"MULTICHOICE"
 #define POLLTYPE_IRV		"IRV"
 
-
-
 //subtypesof(), typesof() without the parent path
 #define subtypesof(typepath) ( typesof(typepath) - typepath )
 
 //Gets the turf this atom inhabits
 #define get_turf(A) (get_step(A, 0))
+
+//Same as above except gets the area instead
+#define get_area(A) (isarea(A) ? A : get_step(A, 0)?.loc)
 
 //Ghost orbit types:
 #define GHOST_ORBIT_CIRCLE		"circle"
@@ -254,9 +251,15 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define SHELTER_DEPLOY_ANCHORED_OBJECTS "anchored objects"
 
 //debug printing macros
-#define debug_world(msg) if (GLOB.Debug2) to_chat(world, "DEBUG: [msg]")
-#define debug_usr(msg) if (GLOB.Debug2&&usr) to_chat(usr, "DEBUG: [msg]")
-#define debug_admins(msg) if (GLOB.Debug2) to_chat(GLOB.admins, "DEBUG: [msg]")
+#define debug_world(msg) if (GLOB.Debug2) to_chat(world, \
+	type = MESSAGE_TYPE_DEBUG, \
+	text = "DEBUG: [msg]")
+#define debug_usr(msg) if (GLOB.Debug2&&usr) to_chat(usr, \
+	type = MESSAGE_TYPE_DEBUG, \
+	text = "DEBUG: [msg]")
+#define debug_admins(msg) if (GLOB.Debug2) to_chat(GLOB.admins, \
+	type = MESSAGE_TYPE_DEBUG, \
+	text = "DEBUG: [msg]")
 #define debug_world_log(msg) if (GLOB.Debug2) log_world("DEBUG: [msg]")
 
 //TODO Move to a pref
@@ -299,6 +302,13 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define CLOCK_SILICONS 22
 #define CLOCK_PROSELYTIZATION 23
 #define SHUTTLE_HIJACK 24
+//NSV13
+#define PVP_SYNDIE_WIN 25
+#define PVP_SYNDIE_LOSS 26
+#define PVP_SYNDIE_PIRATE_WIN 27
+#define SHIP_VICTORY 28
+#define SHIP_DESTROYED 29
+//NSV13
 
 #define FIELD_TURF 1
 #define FIELD_EDGE 2
@@ -316,11 +326,6 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define BEAT_FAST 1
 #define BEAT_SLOW 2
 #define BEAT_NONE 0
-
-//https://secure.byond.com/docs/ref/info.html#/atom/var/mouse_opacity
-#define MOUSE_OPACITY_TRANSPARENT 0
-#define MOUSE_OPACITY_ICON 1
-#define MOUSE_OPACITY_OPAQUE 2
 
 //world/proc/shelleo
 #define SHELLEO_ERRORLEVEL 1
@@ -362,14 +367,6 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define STACK_CHECK_CARDINALS "cardinals" //! checks if there is an object of the result type in any of the cardinal directions
 #define STACK_CHECK_ADJACENT "adjacent" //! checks if there is an object of the result type within one tile
 
-//text files
-#define BRAIN_DAMAGE_FILE "traumas.json"
-#define ION_FILE "ion_laws.json"
-#define PIRATE_NAMES_FILE "pirates.json"
-#define REDPILL_FILE "redpill.json"
-#define WANTED_FILE "wanted_message.json"
-
-
 //Fullscreen overlay resolution in tiles.
 #define FULLSCREEN_OVERLAY_RESOLUTION_X 15
 #define FULLSCREEN_OVERLAY_RESOLUTION_Y 15
@@ -384,18 +381,27 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define TELEPORT_CHANNEL_CULT "cult"			//! Cult teleportation, does whatever it wants (unless there's holiness)
 #define TELEPORT_CHANNEL_FREE "free"			//! Anything else
 
-/// Run the world with this parameter to enable a single run though of the game setup and tear down process with unit tests in between
-#define TEST_RUN_PARAMETER "test-run"
+//Teleport restriction modes (For areas)
+#define TELEPORT_ALLOW_ALL 0
+#define TELEPORT_ALLOW_NONE 1
+#define TELEPORT_ALLOW_CLOCKWORK 2
+#define TELEPORT_ALLOW_ABDUCTORS 3
+
+//Teleport modes
+#define TELEPORT_MODE_DEFAULT 0
+#define TELEPORT_MODE_CLOCKWORK 2
+#define TELEPORT_MODE_ABDUCTORS 3
+
 /// Force the log directory to be something specific in the data/logs folder
 #define OVERRIDE_LOG_DIRECTORY_PARAMETER "log-directory"
-/// Prevent the master controller from starting automatically, overrides TEST_RUN_PARAMETER
+/// Prevent the master controller from starting automatically
 #define NO_INIT_PARAMETER "no-init"
 /// Force the config directory to be something other than "config"
 #define OVERRIDE_CONFIG_DIRECTORY_PARAMETER "config-directory"
 
 #define EGG_LAYING_MESSAGES list("lays an egg.","squats down and croons.","begins making a huge racket.","begins clucking raucously.")
 
-/// Used by PDA and cartridge code to reduce repetitiveness of spritesheets
+// Used by PDA and cartridge code to reduce repetitiveness of spritesheets
 #define PDAIMG(what) {"<span class="pda16x16 [#what]"></span>"}
 
 //Filters
@@ -446,6 +452,22 @@ GLOBAL_LIST_INIT(pda_styles, sortList(list(MONO, VT, ORBITRON, SHARE)))
 #define FALL_NO_MESSAGE			(1<<1) //Used to suppress the "[A] falls through [old_turf]" messages where it'd make little sense at all, like going downstairs.
 #define FALL_STOP_INTERCEPTING	(1<<2) //Used in situations where halting the whole "intercept" loop would be better, like supermatter dusting (and thus deleting) the atom.
 
-//Gear purchase types
+//NSV13 - Gear purchase types
 #define GEAR_METACOIN 1
 #define GEAR_DONATOR  2
+//Religion
+
+#define HOLY_ROLE_DEACON 1 //role below priests, for losing most powers of priests but still being holy.
+#define HOLY_ROLE_PRIEST 2 //default priestly role
+#define HOLY_ROLE_HIGHPRIEST 3 //the one who designates the religion
+
+#define ALIGNMENT_GOOD "good"
+#define ALIGNMENT_NEUT "neutral"
+#define ALIGNMENT_EVIL "evil"
+
+///List of monkey_icons for clothing
+GLOBAL_LIST_EMPTY(monkey_icon_cache)
+
+// Pirates threat
+#define PIRATE_RESPONSE_NO_PAY "pirate_answer_no_pay"
+#define PIRATE_RESPONSE_PAY "pirate_answer_pay"

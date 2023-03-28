@@ -10,7 +10,7 @@
 //A flashy ability, good for crowd control and sowing chaos.
 /datum/action/changeling/resonant_shriek/sting_action(mob/user)
 	..()
-	for(var/mob/living/M in get_hearers_in_view(4, user))
+	for(var/mob/living/M in hearers(4, user))
 		if(iscarbon(M) && M.get_ear_protection() <= 0)
 			var/mob/living/carbon/C = M
 			if(!C.mind || !C.mind.has_antag_datum(/datum/antagonist/changeling))
@@ -31,15 +31,15 @@
 
 /datum/action/changeling/dissonant_shriek
 	name = "Dissonant Shriek"
-	desc = "We shift our vocal cords to release a high-frequency sound that overloads nearby electronics. Costs 20 chemicals."
+	desc = "We shift our vocal cords to release a high-frequency sound that overloads nearby electronics. Costs 25 chemicals."
 	button_icon_state = "dissonant_shriek"
-	chemical_cost = 20
-	dna_cost = 1
+	chemical_cost = 25
+	dna_cost = 2
 
 /datum/action/changeling/dissonant_shriek/sting_action(mob/user)
 	..()
 	for(var/obj/machinery/light/L in range(5, usr))
 		L.on = 1
 		L.break_light_tube()
-	empulse(get_turf(user), 2, 5, 1)
+	empulse(get_turf(user), 2, 3, 1)
 	return TRUE

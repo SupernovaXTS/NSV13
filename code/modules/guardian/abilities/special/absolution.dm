@@ -50,25 +50,12 @@
 
 // STUFF
 
-/obj/item/melee_attack_chain(mob/user, atom/target, params)
-	if(!tool_attack_chain(user, target) && pre_attack(target, user, params))
-		var/resolved
-		if(HAS_TRAIT(target, TRAIT_ONEWAYROAD))
-			resolved = user.attackby(src, user, params) // you just hit yourself
-		else
-			resolved = target.attackby(src, user, params)
-		if(!resolved && target && !QDELETED(src))
-			if(HAS_TRAIT(target, TRAIT_ONEWAYROAD))
-				afterattack(user, user, 1, params)
-			else
-				afterattack(target, user, 1, params)
-
 /mob/living/carbon/human/bullet_act(obj/item/projectile/P, def_zone)
 	if(HAS_TRAIT(src, TRAIT_ONEWAYROAD))
 		var/atom/movable/oldfirer = P.firer
 		P.firer = src
 		P.original = oldfirer
-		P.setAngle(Get_Angle(src, oldfirer))
+		P.setAngle(get_angle(src, oldfirer))
 		visible_message("<span class='danger'>The air around [src] diverts \the [P] back towards [oldfirer]!</span>")
 		return BULLET_ACT_FORCE_PIERCE
 	return ..()
@@ -118,7 +105,7 @@
 		var/atom/movable/oldfirer = P.firer
 		P.firer = src
 		P.original = oldfirer
-		P.setAngle(Get_Angle(src, oldfirer))
+		P.setAngle(get_angle(src, oldfirer))
 		visible_message("<span class='danger'>The air around [src] diverts \the [P] back towards [oldfirer]!</span>")
 		return BULLET_ACT_FORCE_PIERCE
 	return ..()

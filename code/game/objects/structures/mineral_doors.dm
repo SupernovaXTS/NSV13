@@ -10,7 +10,7 @@
 	icon = 'icons/obj/doors/mineral_doors.dmi'
 	icon_state = "metal"
 	max_integrity = 200
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 10, "bio" = 100, "rad" = 100, "fire" = 50, "acid" = 50)
+	armor = list("melee" = 10, "bullet" = 0, "laser" = 0, "energy" = 100, "bomb" = 10, "bio" = 100, "rad" = 100, "fire" = 50, "acid" = 50, "stamina" = 0)
 	CanAtmosPass = ATMOS_PASS_DENSITY
 	rad_flags = RAD_PROTECT_CONTENTS | RAD_NO_CONTAMINATE
 	rad_insulation = RAD_MEDIUM_INSULATION
@@ -25,7 +25,7 @@
 	var/sheetType = /obj/item/stack/sheet/iron //what we're made of
 	var/sheetAmount = 7 //how much we drop when deconstructed
 
-/obj/structure/mineral_door/Initialize()
+/obj/structure/mineral_door/Initialize(mapload)
 	. = ..()
 	air_update_turf(TRUE)
 
@@ -55,10 +55,10 @@
 		return
 	return TryToSwitchState(user)
 
-/obj/structure/mineral_door/CanPass(atom/movable/mover, turf/target)
+/obj/structure/mineral_door/CanAllowThrough(atom/movable/mover, turf/target)
+	. = ..()
 	if(istype(mover, /obj/effect/beam))
 		return !opacity
-	return !density
 
 /obj/structure/mineral_door/proc/TryToSwitchState(atom/user)
 	if(isSwitchingStates || !anchored)
@@ -310,7 +310,7 @@
 	resistance_flags = FLAMMABLE
 	max_integrity = 20
 
-/obj/structure/mineral_door/paperframe/Initialize()
+/obj/structure/mineral_door/paperframe/Initialize(mapload)
 	. = ..()
 	queue_smooth_neighbors(src)
 

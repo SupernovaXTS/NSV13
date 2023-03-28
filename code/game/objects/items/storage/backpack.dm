@@ -44,7 +44,7 @@
 	item_state = "holdingpack"
 	resistance_flags = FIRE_PROOF
 	item_flags = NO_MAT_REDEMPTION
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 60, "acid" = 50)
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 60, "acid" = 50, "stamina" = 0)
 	component_type = /datum/component/storage/concrete/bluespace/bag_of_holding
 
 /obj/item/storage/backpack/holding/clown
@@ -78,7 +78,7 @@
 	icon_state = "hammerspace"
 	resistance_flags = FIRE_PROOF
 	item_flags = NO_MAT_REDEMPTION
-	armor = list("melee" = 100, "bullet" = 100, "laser" = 100, "energy" = 100, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100)
+	armor = list("melee" = 100, "bullet" = 100, "laser" = 100, "energy" = 100, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100, "stamina" = 0)
 	component_type = /datum/component/storage/concrete/bluespace/bag_of_holding
 
 /obj/item/storage/backpack/hammerspace/ComponentInitialize()
@@ -100,7 +100,7 @@
 	item_state = "giftbag"
 	w_class = WEIGHT_CLASS_BULKY
 
-/obj/item/storage/backpack/santabag/Initialize()
+/obj/item/storage/backpack/santabag/Initialize(mapload)
 	. = ..()
 	regenerate_presents()
 
@@ -231,6 +231,40 @@
 	desc = "A spacious backpack with lots of pockets, worn by Engineers of an Emergency Response Team."
 	icon_state = "ert_engineering"
 
+/////////////////
+//DONATOR ITEMS//
+/////////////////
+
+/obj/item/storage/backpack/cak
+	name = "cak backpack"
+	desc = "A cute backpack resembling Cak."
+	icon_state = "cakpack"
+	item_state = "cakpack"
+
+/obj/item/storage/backpack/ian
+	name = "ian backpack"
+	desc = "A cute backpack resembling Ian."
+	icon_state = "ianpack"
+	item_state = "ianpack"
+
+/obj/item/storage/backpack/lisa
+	name = "lisa backpack"
+	desc = "A cute backpack resembling Lisa."
+	icon_state = "lisapack"
+	item_state = "lisapack"
+
+/obj/item/storage/backpack/renault
+	name = "renault backpack"
+	desc = "A cute backpack resembling Renault."
+	icon_state = "renaultpack"
+	item_state = "renaultpack"
+
+/obj/item/storage/backpack/runtime
+	name = "runtime backpack"
+	desc = "A cute backpack resembling Runtime."
+	icon_state = "runtimepack"
+	item_state = "runtimepack"
+
 /*
  * Satchel Types
  */
@@ -321,7 +355,7 @@
 	w_class = WEIGHT_CLASS_NORMAL //Can fit in backpacks itself.
 	level = 1
 
-/obj/item/storage/backpack/satchel/flat/Initialize()
+/obj/item/storage/backpack/satchel/flat/Initialize(mapload)
 	. = ..()
 	ADD_TRAIT(src, TRAIT_T_RAY_VISIBLE, TRAIT_GENERIC)
 
@@ -397,6 +431,7 @@
 	new /obj/item/clothing/mask/surgical(src)
 	new /obj/item/razor(src)
 	new /obj/item/reagent_containers/medspray/sterilizine(src)
+	new /obj/item/blood_filter(src)
 
 /obj/item/storage/backpack/duffelbag/sec
 	name = "security duffel bag"
@@ -418,6 +453,7 @@
 	new /obj/item/surgical_drapes(src)
 	new /obj/item/clothing/mask/surgical(src)
 	new /obj/item/reagent_containers/medspray/sterilizine(src)
+	new /obj/item/blood_filter(src)
 
 /obj/item/storage/backpack/duffelbag/sec/deputy
 	name = "deputy gear duffel bag"
@@ -612,7 +648,7 @@
 	new /obj/item/ammo_box/magazine/pistolm9mm(src)
 	new /obj/item/ammo_box/magazine/pistolm9mm(src)
 	new /obj/item/reagent_containers/food/drinks/bottle/vodka/badminka(src)
-	new /obj/item/reagent_containers/hypospray/medipen/pumpup(src)
+	new /obj/item/reagent_containers/hypospray/medipen/stimulants(src)
 	new /obj/item/grenade/syndieminibomb(src)
 
 // For ClownOps.

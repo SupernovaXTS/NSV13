@@ -1,7 +1,5 @@
 #define PRINTER_TIMEOUT 40
 
-GLOBAL_LIST_EMPTY(doppler_arrays)
-
 /obj/machinery/doppler_array
 	name = "tachyon-doppler array"
 	desc = "A highly precise directional sensor array which measures the release of quants from decaying tachyons. The doppler shifting of the mirror-image formed by these quants can reveal the size, location and temporal affects of energetic disturbances within a large radius ahead of the array.\n"
@@ -9,8 +7,6 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 	icon_state = "tdoppler"
 	density = TRUE
 	verb_say = "states coldly"
-	ui_x = 500
-	ui_y = 225
 	var/cooldown = 10
 	var/next_announce = 0
 	var/integrated = FALSE
@@ -22,18 +18,14 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 	/// List of all explosion records in the form of /datum/data/tachyon_record
 	var/list/records = list()
 
-/obj/machinery/doppler_array/Initialize()
+/obj/machinery/doppler_array/Initialize(mapload)
 	. = ..()
-	GLOB.doppler_arrays += src
+	RegisterSignal(SSdcs, COMSIG_GLOB_EXPLOSION, .proc/sense_explosion)
 	printer_ready = world.time + PRINTER_TIMEOUT
 
 /obj/machinery/doppler_array/ComponentInitialize()
 	. = ..()
 	AddComponent(/datum/component/simple_rotation,ROTATION_ALTCLICK | ROTATION_CLOCKWISE,null,null,CALLBACK(src,.proc/rot_message))
-
-/obj/machinery/doppler_array/Destroy()
-	GLOB.doppler_arrays -= src
-	return ..()
 
 /datum/data/tachyon_record
 	name = "Log Recording"
@@ -43,11 +35,14 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 	var/factual_radius = list()
 	var/theory_radius = list()
 
-/obj/machinery/doppler_array/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/doppler_array/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/doppler_array/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "TachyonArray", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "TachyonArray")
 		ui.open()
 
 /obj/machinery/doppler_array/ui_data(mob/user)
@@ -80,13 +75,13 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 			if(!records || !(record in records))
 				return
 			records -= record
-			return TRUE
+			. = TRUE
 		if("print_record")
 			var/datum/data/tachyon_record/record  = locate(params["ref"]) in records
 			if(!records || !(record in records))
 				return
 			print(usr, record)
-			return TRUE
+			. = TRUE
 
 /obj/machinery/doppler_array/proc/print(mob/user, datum/data/tachyon_record/record)
 	if(!record)
@@ -139,16 +134,18 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 	to_chat(user, "<span class='notice'>You adjust [src]'s dish to face to the [dir2text(dir)].</span>")
 	playsound(src, 'sound/items/screwdriver2.ogg', 50, 1)
 
-/obj/machinery/doppler_array/proc/sense_explosion(turf/epicenter,devastation_range,heavy_impact_range,light_impact_range,
+/obj/machinery/doppler_array/proc/sense_explosion(datum/source,turf/epicenter,devastation_range,heavy_impact_range,light_impact_range,
 												  took,orig_dev_range,orig_heavy_range,orig_light_range)
-	if(stat & NOPOWER)
+	SIGNAL_HANDLER
+
+	if(machine_stat & NOPOWER)
 		return FALSE
 	var/turf/zone = get_turf(src)
-	if(zone.z != epicenter.z)
+	if(zone.get_virtual_z_level() != epicenter.get_virtual_z_level())
 		return FALSE
 
 	if(next_announce > world.time)
-		return
+		return FALSE
 	next_announce = world.time + cooldown
 
 	var/distance = get_dist(epicenter, zone)
@@ -184,18 +181,25 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 
 	record_number++
 	records += R
+	//Update to viewers
+	ui_update()
+
+	for(var/mob/living/carbon/human/H in oviewers(src))
+		if(H.client)
+			INVOKE_ASYNC(H.client, /client.proc/increase_score, /datum/award/score/bomb_score, H, orig_light_range)
+
 	return TRUE
 
 /obj/machinery/doppler_array/power_change()
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		icon_state = "[initial(icon_state)]-broken"
 	else
 		if(powered() && anchored)
 			icon_state = initial(icon_state)
-			stat &= ~NOPOWER
+			set_machine_stat(machine_stat & ~NOPOWER)
 		else
 			icon_state = "[initial(icon_state)]-off"
-			stat |= NOPOWER
+			set_machine_stat(machine_stat | NOPOWER)
 
 //Portable version, built into EOD equipment. It simply provides an explosion's three damage levels.
 /obj/machinery/doppler_array/integrated
@@ -209,46 +213,52 @@ GLOBAL_LIST_EMPTY(doppler_arrays)
 	desc = "A specialized tachyon-doppler bomb detection array that uses the results of the highest yield of explosions for research."
 	var/datum/techweb/linked_techweb
 
-/obj/machinery/doppler_array/research/sense_explosion(turf/epicenter, dev, heavy, light, time, orig_dev, orig_heavy, orig_light)	//probably needs a way to ignore admin explosives later on
+/obj/machinery/doppler_array/research/sense_explosion(datum/source, turf/epicenter, devastation_range, heavy_impact_range, light_impact_range,
+		took, orig_dev_range, orig_heavy_range, orig_light_range) //probably needs a way to ignore admin explosives later on
 	. = ..()
 	if(!.)
-		return FALSE
+		return
 	if(!istype(linked_techweb))
 		say("Warning: No linked research system!")
 		return
 
-	var/point_gain = 0
+	var/general_point_gain = 0
+	var/discovery_point_gain = 0
+
 	/*****The Point Calculator*****/
 
-	if(orig_light < 10)
+	if(orig_light_range < 10)
 		say("Explosion not large enough for research calculations.")
 		return
-	else if(orig_light < 4500)
-		point_gain = (83300 * orig_light) / (orig_light + 3000)
+	else if(orig_light_range < 4500)
+		general_point_gain = (83300 * orig_light_range) / (orig_light_range + 3000)
 	else
-		point_gain = TECHWEB_BOMB_POINTCAP
+		general_point_gain = TECHWEB_BOMB_POINTCAP
 
 	/*****The Point Capper*****/
-	if(point_gain > linked_techweb.largest_bomb_value)
-		if(point_gain <= TECHWEB_BOMB_POINTCAP || linked_techweb.largest_bomb_value < TECHWEB_BOMB_POINTCAP)
+	if(general_point_gain > linked_techweb.largest_bomb_value)
+		if(general_point_gain <= TECHWEB_BOMB_POINTCAP || linked_techweb.largest_bomb_value < TECHWEB_BOMB_POINTCAP)
 			var/old_tech_largest_bomb_value = linked_techweb.largest_bomb_value //held so we can pull old before we do math
-			linked_techweb.largest_bomb_value = point_gain
-			point_gain -= old_tech_largest_bomb_value
-			point_gain = min(point_gain,TECHWEB_BOMB_POINTCAP)
+			linked_techweb.largest_bomb_value = general_point_gain
+			general_point_gain -= old_tech_largest_bomb_value
+			general_point_gain = min(general_point_gain,TECHWEB_BOMB_POINTCAP)
 		else
 			linked_techweb.largest_bomb_value = TECHWEB_BOMB_POINTCAP
-			point_gain = 1000
+			general_point_gain = 1000
 		var/datum/bank_account/D = SSeconomy.get_dep_account(ACCOUNT_SCI)
 		if(D)
-			D.adjust_money(point_gain)
-			linked_techweb.add_point_type(TECHWEB_POINT_TYPE_DEFAULT, point_gain)
-			say("Explosion details and mixture analyzed and sold to the highest bidder for $[point_gain], with a reward of [point_gain] points.")
+			D.adjust_money(general_point_gain)
+			discovery_point_gain = general_point_gain * 0.5
+			linked_techweb.add_point_type(TECHWEB_POINT_TYPE_DEFAULT, general_point_gain)
+			linked_techweb.add_point_type(TECHWEB_POINT_TYPE_DISCOVERY, discovery_point_gain)
+
+			say("Explosion details and mixture analyzed and sold to the highest bidder for $[general_point_gain], with a reward of [general_point_gain] General Research points and [discovery_point_gain] Discovery Research points.")
 
 	else //you've made smaller bombs
 		say("Data already captured. Aborting.")
 		return
 
-/obj/machinery/doppler_array/research/science/Initialize()
+/obj/machinery/doppler_array/research/science/Initialize(mapload)
 	. = ..()
 	linked_techweb = SSresearch.science_tech
 

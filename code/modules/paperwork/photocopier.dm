@@ -112,7 +112,7 @@
 		else if(ass) //ASS COPY. By Miauw
 			for(var/i = 0, i < copies, i++)
 				var/icon/temp_img
-				if(ishuman(ass) && (ass.get_item_by_slot(SLOT_W_UNIFORM) || ass.get_item_by_slot(SLOT_WEAR_SUIT)))
+				if(ishuman(ass) && (ass.get_item_by_slot(ITEM_SLOT_ICLOTHING) || ass.get_item_by_slot(ITEM_SLOT_OCLOTHING)))
 					to_chat(usr, "<span class='notice'>You feel kind of silly, copying [ass == usr ? "your" : ass][ass == usr ? "" : "\'s"] ass with [ass == usr ? "your" : "[ass.p_their()]"] clothes on.</span>" )
 					break
 				else if(toner >= 5 && !busy && check_ass()) //You have to be sitting on the copier and either be a xeno or a human without clothes on.
@@ -165,7 +165,7 @@
 		if(toner >= 5 && !busy)
 			var/mob/living/silicon/ai/tempAI = usr
 			if(tempAI.aicamera.stored.len == 0)
-				to_chat(usr, "<span class='boldannounce'>No images saved</span>")
+				to_chat(usr, "<span class='boldannounce'>No images saved.</span>")
 				return
 			var/datum/picture/selection = tempAI.aicamera.selectpicture(usr)
 			var/obj/item/photo/photo = new(loc, selection)
@@ -245,21 +245,21 @@
 			to_chat(user, "<span class='warning'>This cartridge is not yet ready for replacement! Use up the rest of the toner.</span>")
 
 	else if(istype(O, /obj/item/areaeditor/blueprints))
-		to_chat(user, "<span class='warning'>The Blueprint is too large to put into the copier. You need to find something else to record the document</span>")
+		to_chat(user, "<span class='warning'>The Blueprint is too large to put into the copier. You need to find something else to record the document.</span>")
 	else
 		return ..()
 
 /obj/machinery/photocopier/obj_break(damage_flag)
-	if(!(flags_1 & NODECONSTRUCT_1))
-		if(toner > 0)
-			new /obj/effect/decal/cleanable/oil(get_turf(src))
-			toner = 0
+	. = ..()
+	if(. && toner > 0)
+		new /obj/effect/decal/cleanable/oil(get_turf(src))
+		toner = 0
 
 /obj/machinery/photocopier/MouseDrop_T(mob/target, mob/user)
 	check_ass() //Just to make sure that you can re-drag somebody onto it after they moved off.
 	if (!istype(target) || target.anchored || target.buckled || !Adjacent(target) || !user.canUseTopic(src, BE_CLOSE) || target == ass || copier_blocked())
 		return
-	src.add_fingerprint(user)
+	add_fingerprint(user)
 	if(target == user)
 		user.visible_message("[user] starts climbing onto the photocopier!", "<span class='notice'>You start climbing onto the photocopier...</span>")
 	else
@@ -296,7 +296,7 @@
 		updateUsrDialog()
 		return 0
 	else if(ishuman(ass))
-		if(!ass.get_item_by_slot(SLOT_W_UNIFORM) && !ass.get_item_by_slot(SLOT_WEAR_SUIT))
+		if(!ass.get_item_by_slot(ITEM_SLOT_ICLOTHING) && !ass.get_item_by_slot(ITEM_SLOT_OCLOTHING))
 			return 1
 		else
 			return 0
@@ -331,3 +331,20 @@
 	grind_results = list(/datum/reagent/iodine = 40, /datum/reagent/iron = 10)
 	var/charges = 5
 	var/max_charges = 5
+
+/obj/item/toner/examine(mob/user)
+	. = ..()
+	. += "<span class='notice'>The ink level gauge on the side reads [round(charges / max_charges * 100)]%</span>"
+
+/obj/item/toner/large
+	name = "large toner cartridge"
+	desc = "A hefty cartridge of NanoTrasen ValueBrand toner. Fits photocopiers and autopainters alike."
+	grind_results = list(/datum/reagent/iodine = 90, /datum/reagent/iron = 10)
+	charges = 25
+	max_charges = 25
+
+/obj/item/toner/extreme
+	name = "extremely large toner cartridge"
+	desc = "Why would ANYONE need THIS MUCH TONER?"
+	charges = 200
+	max_charges = 200

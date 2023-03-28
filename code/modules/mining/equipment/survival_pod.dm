@@ -5,7 +5,7 @@
 	dynamic_lighting = DYNAMIC_LIGHTING_FORCED
 	requires_power = FALSE
 	has_gravity = STANDARD_GRAVITY
-	valid_territory = FALSE
+	area_flags = BLOBS_ALLOWED | UNIQUE_AREA
 
 //Survival Capsule
 /obj/item/survivalcapsule
@@ -33,8 +33,9 @@
 /obj/item/survivalcapsule/examine(mob/user)
 	. = ..()
 	get_template()
-	. += "This capsule has the [template.name] stored."
-	. += template.description
+	if(template)
+		. += "This capsule has the [template.name] stored."
+		. += template.description
 
 /obj/item/survivalcapsule/attack_self()
 	//Can't grab when capsule is New() because templates aren't loaded then
@@ -91,14 +92,14 @@
 	icon_state = "capsulemed"
 	icon = 'icons/obj/mining.dmi'
 	template_id = "shelter_echo"
-	
+
 /obj/item/survivalcapsule/space
 	name = "space shelter capsule"
 	desc = "A spaceworthy shelter designed for emergencies/construction in a bluespace capsule."
 	icon_state = "capsuleeng"
 	icon = 'icons/obj/mining.dmi'
 	template_id = "shelter_eta"
-	
+
 /obj/item/survivalcapsule/barricade
 	name = "barricade capsule"
 	desc = "A 3x3 glass barricade designed for security use with energy weapons."
@@ -143,6 +144,7 @@
 	icon = 'icons/obj/doors/airlocks/survival/survival.dmi'
 	overlays_file = 'icons/obj/doors/airlocks/survival/survival_overlays.dmi'
 	assemblytype = /obj/structure/door_assembly/door_assembly_pod
+	anim_parts = "topbolts=0,6,0,3;bottombolts=0,-6,3,-6;top=0,4,0,2;bottom=0,-4,0,2;rightbolts=14,0,1.5,5;left=-15,0,1.5,5;right=14,0,1.5,5"
 
 /obj/machinery/door/airlock/survival_pod/glass
 	opacity = FALSE
@@ -225,10 +227,14 @@
 		return
 	attack_self(user)
 
-//Bed
+//Beds
 /obj/structure/bed/pod
 	icon = 'icons/obj/lavaland/survival_pod.dmi'
 	icon_state = "bed"
+
+/obj/structure/bed/double/pod
+	icon = 'icons/obj/lavaland/survival_pod.dmi'
+	icon_state = "bed_double"
 
 //Survival Storage Unit
 /obj/machinery/smartfridge/survival_pod
@@ -349,7 +355,7 @@
 						/obj/item/energy_katana,
 						/obj/item/hierophant_club,
 						/obj/item/his_grace,
-						/obj/item/gun/ballistic/minigun,
+						/obj/item/gun/energy/minigun,
 						/obj/item/gun/ballistic/automatic/l6_saw,
 						/obj/item/gun/magic/staff/chaos,
 						/obj/item/gun/magic/staff/spellblade,
@@ -360,7 +366,7 @@
 						/obj/item/phylactery,
 						/obj/item/banhammer)
 
-/obj/item/fakeartefact/Initialize()
+/obj/item/fakeartefact/Initialize(mapload)
 	. = ..()
 	var/obj/item/I = pick(possible)
 	name = initial(I.name)

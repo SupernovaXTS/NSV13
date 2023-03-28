@@ -6,10 +6,12 @@
 	nodamage = TRUE
 	armour_penetration = 100
 	flag = "magic"
+	martial_arts_no_deflect = TRUE
 
 /obj/item/projectile/magic/death
 	name = "bolt of death"
 	icon_state = "pulse1_bl"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/death/on_hit(target)
 	. = ..()
@@ -26,11 +28,12 @@
 	damage = 0
 	damage_type = OXY
 	nodamage = TRUE
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/resurrection/on_hit(mob/living/carbon/target)
 	. = ..()
 	if(isliving(target))
-		if(target.hellbound)
+		if(target.ishellbound())
 			return BULLET_ACT_BLOCK
 		if(target.anti_magic_check())
 			target.visible_message("<span class='warning'>[src] vanishes on contact with [target]!</span>")
@@ -51,6 +54,7 @@
 	damage = 0
 	damage_type = OXY
 	nodamage = TRUE
+	martial_arts_no_deflect = FALSE
 	var/inner_tele_radius = 0
 	var/outer_tele_radius = 6
 
@@ -79,6 +83,7 @@
 	damage = 0
 	damage_type = OXY
 	nodamage = TRUE
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/safety/on_hit(atom/target)
 	. = ..()
@@ -134,6 +139,7 @@
 	damage = 0
 	damage_type = BURN
 	nodamage = TRUE
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/change/on_hit(atom/change)
 	. = ..()
@@ -157,12 +163,16 @@
 	M.invisibility = INVISIBILITY_ABSTRACT
 
 	var/list/contents = M.contents.Copy()
-
-	if(iscyborg(M))
-		var/mob/living/silicon/robot/Robot = M
-		if(Robot.mmi)
-			qdel(Robot.mmi)
-		Robot.notify_ai(NEW_BORG)
+	if(issilicon(M)) // silicons should not drop internal parts since they are supposed to be unobtainable
+		for(var/obj/item/W in contents)
+			qdel(W)
+		if(iscyborg(M))
+			var/mob/living/silicon/robot/Robot = M
+			if(Robot.deployed || Robot.mainframe)
+				Robot.undeploy() // disconnect any AI shells first
+			if(Robot.mmi)
+				qdel(Robot.mmi)
+			Robot.notify_ai(NEW_BORG)
 	else
 		for(var/obj/item/W in contents)
 			if(!M.dropItemToGround(W))
@@ -185,7 +195,7 @@
 			if(issilicon(new_mob))
 				new_mob.gender = M.gender
 				new_mob.invisibility = 0
-				new_mob.job = "Cyborg"
+				new_mob.job = JOB_NAME_CYBORG
 				var/mob/living/silicon/robot/Robot = new_mob
 				Robot.lawupdate = FALSE
 				Robot.connected_ai = null
@@ -253,13 +263,12 @@
 				if(chooseable_races.len)
 					new_mob.set_species(pick(chooseable_races))
 
-			var/datum/preferences/A = new()	//Randomize appearance for the human
-			A.copy_to(new_mob, icon_updates=0)
+			var/datum/character_save/CS = new()	//Randomize appearance for the human
+			CS.copy_to(new_mob, icon_updates=0)
 
 			var/mob/living/carbon/human/H = new_mob
-			H.update_body()
 			H.update_hair()
-			H.update_body_parts()
+			H.update_body_parts(TRUE)
 			H.dna.update_dna_identity()
 
 	if(!new_mob)
@@ -281,6 +290,9 @@
 	var/poly_msg = CONFIG_GET(keyed_list/policy)["polymorph"]
 	if(poly_msg)
 		to_chat(new_mob, poly_msg)
+
+	if((istype(new_mob, /mob/living/silicon/robot/modules/syndicate) || istype(new_mob, /mob/living/carbon/alien/humanoid) || istype(new_mob, /mob/living/simple_animal/hostile)))
+		to_chat(new_mob, "<span class='userdanger'>Despite taking the form of an antagonistic being, you have the same mind as before your transformation. Your loyalties and interests remain the same. Unless you were turned into a shade, or were previously an antagonist, this is not a pass to go antagonize the station.</span>")
 
 	M.transfer_observers_to(new_mob)
 
@@ -340,6 +352,7 @@
 	flag = "magic"
 	dismemberment = 50
 	nodamage = FALSE
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/spellblade/on_hit(target)
 	if(ismob(target))
@@ -359,6 +372,7 @@
 	armour_penetration = 0
 	flag = "magic"
 	hitsound = 'sound/weapons/barragespellhit.ogg'
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/arcane_barrage/on_hit(target)
 	if(ismob(target))
@@ -375,36 +389,32 @@
 	icon_state = "locker"
 	nodamage = TRUE
 	flag = "magic"
+	martial_arts_no_deflect = FALSE
 	var/weld = TRUE
 	var/created = FALSE //prevents creation of more then one locker if it has multiple hits
 	var/locker_suck = TRUE
-	var/obj/structure/closet/locker_temp_instance = /obj/structure/closet/decay
 
-/obj/item/projectile/magic/locker/Initialize()
+
+/obj/item/projectile/magic/locker/prehit_pierce(atom/A)
 	. = ..()
-	locker_temp_instance = new(src)
-
-/obj/item/projectile/magic/locker/prehit(atom/A)
 	if(isliving(A) && locker_suck)
 		var/mob/living/M = A
-		if(M.anti_magic_check())
+		if(M.anti_magic_check())			// no this doesn't check if ..() returned to phase through do I care no it's magic ain't gotta explain shit
 			M.visible_message("<span class='warning'>[src] vanishes on contact with [A]!</span>")
-			qdel(src)
+			return PROJECTILE_DELETE_WITHOUT_HITTING
+		if(M.incorporeal_move || M.mob_size > MOB_SIZE_HUMAN || LAZYLEN(contents)>=5)
 			return
-		if(!locker_temp_instance.insertion_allowed(M))
-			return ..()
 		M.forceMove(src)
-		return FALSE
-	return ..()
+		return PROJECTILE_PIERCE_PHASE
 
 /obj/item/projectile/magic/locker/on_hit(target)
 	if(created)
 		return ..()
-	var/obj/structure/closet/C = new locker_temp_instance(get_turf(src))
+	var/obj/structure/closet/decay/C = new(get_turf(src))
 	if(LAZYLEN(contents))
 		for(var/atom/movable/AM in contents)
-			C.insert(AM)
-		C.welded = weld
+			AM.forceMove(C)
+		C.welded = TRUE
 		C.update_icon()
 	created = TRUE
 	return ..()
@@ -418,21 +428,21 @@
 /obj/structure/closet/decay
 	breakout_time = 600
 	icon_welded = null
+	material_drop_amount = 0
 	var/magic_icon = "cursed"
 	var/weakened_icon = "decursed"
-	var/auto_destroy = TRUE
 
-/obj/structure/closet/decay/Initialize()
+/obj/structure/closet/decay/Initialize(mapload)
 	. = ..()
-	if(auto_destroy)
-		addtimer(CALLBACK(src, .proc/bust_open), 5 MINUTES)
-	addtimer(CALLBACK(src, .proc/magicly_lock), 5)
+	addtimer(CALLBACK(src, .proc/locker_magic_timer), 5)
 
-/obj/structure/closet/decay/proc/magicly_lock()
-	if(!welded)
-		return
-	icon_state = magic_icon
-	update_icon()
+/obj/structure/closet/decay/proc/locker_magic_timer()
+	if(welded)
+		addtimer(CALLBACK(src, .proc/bust_open), 5 MINUTES)
+		icon_state = magic_icon
+		update_icon()
+	else
+		addtimer(CALLBACK(src, .proc/decay), 15 SECONDS)
 
 /obj/structure/closet/decay/after_weld(weld_state)
 	if(weld_state)
@@ -454,11 +464,11 @@
 	icon_state = weakened_icon
 	update_icon()
 	addtimer(CALLBACK(src, .proc/decay), 15 SECONDS)
-	icon_welded = "welded"
 
 /obj/item/projectile/magic/flying
 	name = "bolt of flying"
 	icon_state = "flight"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/flying/on_hit(target)
 	. = ..()
@@ -473,6 +483,7 @@
 /obj/item/projectile/magic/bounty
 	name = "bolt of bounty"
 	icon_state = "bounty"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/bounty/on_hit(target)
 	. = ..()
@@ -486,6 +497,7 @@
 /obj/item/projectile/magic/antimagic
 	name = "bolt of antimagic"
 	icon_state = "antimagic"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/antimagic/on_hit(target)
 	. = ..()
@@ -499,6 +511,7 @@
 /obj/item/projectile/magic/fetch
 	name = "bolt of fetching"
 	icon_state = "fetch"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/fetch/on_hit(target)
 	. = ..()
@@ -513,6 +526,7 @@
 /obj/item/projectile/magic/sapping
 	name = "bolt of sapping"
 	icon_state = "sapping"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/sapping/on_hit(target)
 	. = ..()
@@ -526,6 +540,7 @@
 /obj/item/projectile/magic/necropotence
 	name = "bolt of necropotence"
 	icon_state = "necropotence"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/necropotence/on_hit(target)
 	. = ..()
@@ -548,12 +563,13 @@
 /obj/item/projectile/magic/wipe
 	name = "bolt of possession"
 	icon_state = "wipe"
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/wipe/on_hit(target)
 	. = ..()
 	if(iscarbon(target))
 		var/mob/living/carbon/M = target
-		if(M.anti_magic_check() || istype(M.get_item_by_slot(SLOT_HEAD), /obj/item/clothing/head/foilhat))
+		if(M.anti_magic_check() || istype(M.get_item_by_slot(ITEM_SLOT_HEAD), /obj/item/clothing/head/foilhat))
 			M.visible_message("<span class='warning'>[src] vanishes on contact with [target]!</span>")
 			return BULLET_ACT_BLOCK
 		for(var/x in M.get_traumas())//checks to see if the victim is already going through possession
@@ -597,6 +613,7 @@
 	desc = "What the fuck does this do?!"
 	damage = 0
 	var/proxdet = TRUE
+	martial_arts_no_deflect = FALSE
 
 /obj/item/projectile/magic/aoe/Range()
 	if(proxdet)
@@ -621,6 +638,11 @@
 	var/chain
 	var/mob/living/caster
 
+/obj/item/projectile/magic/aoe/lightning/New(loc, spell_level)
+	. = ..()
+	tesla_power += 5000 * spell_level
+	tesla_range += 2 * spell_level
+
 /obj/item/projectile/magic/aoe/lightning/fire(setAngle)
 	if(caster)
 		chain = caster.Beam(src, icon_state = "lightning[rand(1, 12)]", time = INFINITY, maxdistance = INFINITY)
@@ -641,7 +663,7 @@
 	qdel(chain)
 	. = ..()
 
-/obj/item/projectile/magic/aoe/fireball
+/obj/item/projectile/magic/fireball
 	name = "bolt of fireball"
 	icon_state = "fireball"
 	damage = 10
@@ -653,8 +675,17 @@
 	var/exp_light = 2
 	var/exp_flash = 3
 	var/exp_fire = 2
+	var/magic = TRUE
+	var/holy = FALSE
 
-/obj/item/projectile/magic/aoe/fireball/on_hit(target)
+/obj/item/projectile/magic/fireball/New(loc, spell_level)
+	. = ..()
+	exp_fire += spell_level
+	exp_flash += spell_level
+	exp_light += spell_level
+	exp_heavy = max(spell_level - 2, 0)
+
+/obj/item/projectile/magic/fireball/on_hit(target)
 	. = ..()
 	if(ismob(target))
 		var/mob/living/M = target
@@ -663,16 +694,18 @@
 			return BULLET_ACT_BLOCK
 		M.take_overall_damage(0,10) //between this 10 burn, the 10 brute, the explosion brute, and the onfire burn, your at about 65 damage if you stop drop and roll immediately
 	var/turf/T = get_turf(target)
-	explosion(T, -1, exp_heavy, exp_light, exp_flash, 0, flame_range = exp_fire)
+	explosion(T, -1, exp_heavy, exp_light, exp_flash, 0, flame_range = exp_fire, magic = magic, holy = holy)
 
-/obj/item/projectile/magic/aoe/fireball/infernal
+/obj/item/projectile/magic/fireball/infernal
 	name = "infernal fireball"
 	exp_heavy = -1
 	exp_light = -1
 	exp_flash = 4
 	exp_fire= 5
+	magic = FALSE
+	holy = TRUE
 
-/obj/item/projectile/magic/aoe/fireball/infernal/on_hit(target)
+/obj/item/projectile/magic/fireball/infernal/on_hit(target)
 	. = ..()
 	if(ismob(target))
 		var/mob/living/M = target
@@ -680,7 +713,7 @@
 			return BULLET_ACT_BLOCK
 	var/turf/T = get_turf(target)
 	for(var/i=0, i<50, i+=10)
-		addtimer(CALLBACK(GLOBAL_PROC, .proc/explosion, T, -1, exp_heavy, exp_light, exp_flash, FALSE, FALSE, exp_fire), i)
+		addtimer(CALLBACK(GLOBAL_PROC, .proc/explosion, T, -1, exp_heavy, exp_light, exp_flash, FALSE, FALSE, FALSE, TRUE), i)
 
 //still magic related, but a different path
 

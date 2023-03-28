@@ -30,6 +30,7 @@ GLOBAL_VAR_INIT(total_runtimes_skipped, 0)
 		for (var/line in splittext(E.desc, "\n"))
 			if (text2ascii(line) != 32)
 				stack_trace_storage += line
+		return
 
 	var/static/list/error_last_seen = list()
 	var/static/list/error_cooldown = list() /* Error_cooldown items will either be positive(cooldown time) or negative(silenced error)
@@ -71,7 +72,7 @@ GLOBAL_VAR_INIT(total_runtimes_skipped, 0)
 		configured_error_silence_time = initial(CE.config_entry_value)
 
 
-	//Each occurence of a unique error adds to its cooldown time...
+	//Each occurrence of a unique error adds to its cooldown time...
 	cooldown = max(0, cooldown - (world.time - last_seen)) + configured_error_cooldown
 	// ... which is used to silence an error if it occurs too often, too fast
 	if(cooldown > configured_error_cooldown * configured_error_limit)

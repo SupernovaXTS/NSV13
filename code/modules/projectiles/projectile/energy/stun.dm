@@ -4,6 +4,7 @@
 	color = "#FFFF00"
 	damage = 40
 	damage_type = STAMINA
+	flag = "stamina"
 	nodamage = FALSE
 	knockdown = 30
 	stutter = 5
@@ -24,7 +25,7 @@
 		SEND_SIGNAL(C, COMSIG_LIVING_MINOR_SHOCK)
 		if(C.confused < 10)
 			C.confused = 10
-		if(C.dna && C.dna.check_mutation(HULK))
+		if(C.has_dna() && C.dna.check_mutation(HULK))
 			C.say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ), forced = "hulk")
 		else if((C.status_flags & CANKNOCKDOWN) && !HAS_TRAIT(C, TRAIT_STUNIMMUNE))
 			addtimer(CALLBACK(C, /mob/living/carbon.proc/do_jitter_animation, jitter), 5)

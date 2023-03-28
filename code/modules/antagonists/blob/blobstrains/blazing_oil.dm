@@ -18,9 +18,9 @@
 
 /datum/blobstrain/reagent/blazing_oil/damage_reaction(obj/structure/blob/B, damage, damage_type, damage_flag)
 	if(damage_type == BURN && damage_flag != "energy")
-		for(var/turf/open/T in range(1, B))
+		for(var/turf/open/T in RANGE_TURFS(1, B))
 			var/obj/structure/blob/C = locate() in T
-			if(!(C && C.overmind && C.overmind.blobstrain.type == B.overmind.blobstrain.type) && prob(80))
+			if(!(C?.overmind && C.overmind.blobstrain.type == B.overmind.blobstrain.type) && prob(80))
 				new /obj/effect/hotspot(T)
 	if(damage_flag == "fire")
 		return 0
@@ -30,6 +30,7 @@
 	name = "Blazing Oil"
 	taste_description = "burning oil"
 	color = "#B68D00"
+	chem_flags = CHEMICAL_NOT_SYNTH | CHEMICAL_RNG_FUN
 
 /datum/reagent/blob/blazing_oil/reaction_mob(mob/living/M, method=TOUCH, reac_volume, show_message, touch_protection, mob/camera/blob/O)
 	reac_volume = ..()

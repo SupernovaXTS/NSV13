@@ -6,23 +6,25 @@
 
 /obj/machinery/portable_atmospherics/pump
 	name = "portable air pump"
+	desc = "It's a small portable air pump, capable of siphoning or pumping gasses into its surroundings. It has a decent internal gas storage, and a slot for external tanks. It can be wrenched to a connection port to join it into the pipe net."
 	icon_state = "psiphon:0"
 	density = TRUE
-	ui_x = 300
-	ui_y = 315
+
+
 
 	var/on = FALSE
 	var/direction = PUMP_OUT
+	var/target_pressure = ONE_ATMOSPHERE
 	var/obj/machinery/atmospherics/components/binary/pump/pump
 
 	volume = 1000
 
-/obj/machinery/portable_atmospherics/pump/Initialize()
+/obj/machinery/portable_atmospherics/pump/Initialize(mapload)
 	. = ..()
 	pump = new(src, FALSE)
 	pump.on = TRUE
-	pump.stat = 0
-	pump.build_network()
+	pump.machine_stat = 0
+	SSair.add_to_rebuild_queue(pump)
 
 /obj/machinery/portable_atmospherics/pump/Destroy()
 	var/turf/T = get_turf(src)
@@ -63,7 +65,7 @@
 	. = ..()
 	if(. & EMP_PROTECT_SELF)
 		return
-	if(is_operational())
+	if(is_operational)
 		if(prob(50 / severity))
 			on = !on
 		if(prob(100 / severity))
@@ -82,12 +84,16 @@
 			investigate_log("[key_name(user)] started a transfer into [holding].", INVESTIGATE_ATMOS)
 
 
-/obj/machinery/portable_atmospherics/pump/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-														datum/tgui/master_ui = null, datum/ui_state/state = GLOB.physical_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/portable_atmospherics/pump/ui_state(mob/user)
+	return GLOB.physical_state
+
+/obj/machinery/portable_atmospherics/pump/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "PortablePump", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "PortablePump")
 		ui.open()
+		ui.set_autoupdate(TRUE) // Air pressure, tank pressure
 
 /obj/machinery/portable_atmospherics/pump/ui_data()
 	var/data = list()
@@ -115,10 +121,11 @@
 		if("power")
 			on = !on
 			if(on && !holding)
-				var/plasma = air_contents.get_moles(/datum/gas/plasma)
-				var/n2o = air_contents.get_moles(/datum/gas/nitrous_oxide)
+				var/plasma = air_contents.get_moles(GAS_PLASMA)
+				var/constricted_plasma = air_contents.get_moles(GAS_CONSTRICTED_PLASMA)//NSV13
+				var/n2o = air_contents.get_moles(GAS_NITROUS)
 				if(n2o || plasma)
-					message_admins("[ADMIN_LOOKUPFLW(usr)] turned on a pump that contains [n2o ? "N2O" : ""][n2o && plasma ? " & " : ""][plasma ? "Plasma" : ""] at [ADMIN_VERBOSEJMP(src)]")
+					message_admins("[ADMIN_LOOKUPFLW(usr)] turned on a pump that contains [n2o ? "N2O" : ""][n2o && plasma ? " & " : ""][plasma ? "Plasma" : ""][(n2o || plasma) && constricted_plasma ? " & " : ""][constricted_plasma ? "Constricted Plasma" : ""] at [ADMIN_VERBOSEJMP(src)]") //NSV13 - constricted plasma
 					log_admin("[key_name(usr)] turned on a pump that contains [n2o ? "N2O" : ""][n2o && plasma ? " & " : ""][plasma ? "Plasma" : ""] at [AREACOORD(src)]")
 			else if(on && direction == PUMP_OUT)
 				investigate_log("[key_name(usr)] started a transfer into [holding].", INVESTIGATE_ATMOS)
@@ -152,4 +159,5 @@
 			if(holding)
 				replace_tank(usr, FALSE)
 				. = TRUE
-	update_icon()
+	if(.)
+		update_icon()

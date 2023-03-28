@@ -14,12 +14,11 @@
 	materials = list(/datum/material/iron = 500)
 	attack_verb = list("robusted")
 	hitsound = 'sound/weapons/smash.ogg'
-	block_upgrade_walk = 1
 	custom_materials = list(/datum/material/iron = 500) //Toolboxes by default use iron as their core, custom material.
 	var/latches = "single_latch"
 	var/has_latches = TRUE
 
-/obj/item/storage/toolbox/Initialize()
+/obj/item/storage/toolbox/Initialize(mapload)
 	. = ..()
 	if(has_latches)
 		if(prob(10))
@@ -84,14 +83,20 @@
 	has_latches = FALSE
 	material_flags = MATERIAL_NO_COLOR
 
-/obj/item/storage/toolbox/mechanical/old/heirloom
-	name = "toolbox" //this will be named "X family toolbox"
-	desc = "It's seen better days."
+/obj/item/heirloomtoolbox //Not actually a toolbox at all, just an heirloom
+	name = "family toolbox"
+	icon = 'icons/obj/storage.dmi'
+	icon_state = "toolbox_blue_old"
+	lefthand_file = 'icons/mob/inhands/equipment/toolbox_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/equipment/toolbox_righthand.dmi'
+	flags_1 = CONDUCT_1
+	desc = "It may be rusted shut, but it's still an important keepsake."
 	force = 5
+	throw_speed = 2
+	throw_range = 7
 	w_class = WEIGHT_CLASS_NORMAL
-
-/obj/item/storage/toolbox/mechanical/old/heirloom/PopulateContents()
-	return
+	attack_verb = list("robusted")
+	hitsound = 'sound/weapons/smash.ogg'
 
 /obj/item/storage/toolbox/mechanical/old/clean
 	name = "toolbox"
@@ -138,12 +143,12 @@
 	new /obj/item/wirecutters(src)
 	new /obj/item/t_scanner(src)
 	new /obj/item/crowbar(src)
-	new /obj/item/stack/cable_coil(src,30,pickedcolor)
-	new /obj/item/stack/cable_coil(src,30,pickedcolor)
+	new /obj/item/stack/cable_coil(src,MAXCOIL,pickedcolor)
+	new /obj/item/stack/cable_coil(src,MAXCOIL,pickedcolor)
 	if(prob(5))
 		new /obj/item/clothing/gloves/color/yellow(src)
 	else
-		new /obj/item/stack/cable_coil(src,30,pickedcolor)
+		new /obj/item/stack/cable_coil(src,MAXCOIL,pickedcolor)
 
 /obj/item/storage/toolbox/syndicate
 	name = "suspicious looking toolbox"
@@ -179,7 +184,7 @@
 	new /obj/item/wrench(src)
 	new /obj/item/weldingtool(src)
 	new /obj/item/crowbar(src)
-	new /obj/item/stack/cable_coil(src,30,pickedcolor)
+	new /obj/item/stack/cable_coil(src,MAXCOIL,pickedcolor)
 	new /obj/item/wirecutters(src)
 	new /obj/item/multitool(src)
 

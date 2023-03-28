@@ -11,8 +11,8 @@
 	///max amount of bottles allowed on our tile before we start storing them instead
 	var/max_floor_bottles = 10
 
-	ui_x = 300
-	ui_y = 120
+
+
 
 /obj/machinery/plumbing/bottle_dispenser/examine(mob/user)
 	. = ..()
@@ -23,7 +23,7 @@
 	AddComponent(/datum/component/plumbing/simple_demand, bolt)
 
 /obj/machinery/plumbing/bottle_dispenser/process()
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		return
 	if((reagents.total_volume >= bottle_size) && (stored_bottles.len < max_stored_bottles))
 		var/obj/item/reagent_containers/glass/bottle/P = new(src)
@@ -41,10 +41,14 @@
 			stored_bottles -= AM
 			AM.forceMove(drop_location())
 
-/obj/machinery/plumbing/bottle_dispenser/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/plumbing/bottle_dispenser/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/plumbing/bottle_dispenser/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "BottleDispenser", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "BottleDispenser")
 		ui.open()
 
 /obj/machinery/plumbing/bottle_dispenser/ui_data(mob/user)
@@ -56,10 +60,11 @@
 /obj/machinery/plumbing/bottle_dispenser/ui_act(action, params)
 	if(..())
 		return
-	. = TRUE
 	switch(action)
 		if("change_bottle_size")
 			bottle_size = CLAMP(text2num(params["volume"]), 0, 30)
+			. = TRUE
 		if("change_bottle_name")
 			var/new_name = stripped_input(usr, "Enter a bottle name.", name, bottle_name)
 			bottle_name = new_name + " bottle"
+			. = TRUE

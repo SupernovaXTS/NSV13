@@ -105,7 +105,7 @@
 			if("Immortality")
 				to_chat(user, "<B>Your wish is granted, but at a terrible cost...</B>")
 				to_chat(user, "The Wish Granter punishes you for your selfishness, claiming your soul and warping your body to match the darkness in your heart.")
-				user.verbs += /mob/living/carbon/proc/immortality
+				user.add_verb(/mob/living/carbon/proc/immortality)
 				user.set_species(/datum/species/shadow)
 			if("Peace")
 				to_chat(user, "<B>Whatever alien sentience that the Wish Granter possesses is satisfied with your wish. There is a distant wailing as the last of the Faithless begin to die, then silence.</B>")
@@ -126,7 +126,16 @@
 	icon_state = "blobpod"
 	var/triggered = 0
 
-/obj/effect/meatgrinder/Crossed(atom/movable/AM)
+/obj/effect/meatgrinder/Initialize(mapload)
+	. = ..()
+	var/static/list/loc_connections = list(
+		COMSIG_ATOM_ENTERED = .proc/on_entered,
+	)
+	AddElement(/datum/element/connect_loc, loc_connections)
+
+/obj/effect/meatgrinder/proc/on_entered(datum/source, atom/movable/AM)
+	SIGNAL_HANDLER
+
 	Bumped(AM)
 
 /obj/effect/meatgrinder/Bumped(atom/movable/AM)

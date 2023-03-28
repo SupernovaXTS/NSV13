@@ -3,12 +3,16 @@
 	icon_state = "plating"
 	initial_gas_mix = AIRLESS_ATMOS
 
+/turf/open/floor/plating/lavaland
+	icon_state = "plating"
+	initial_gas_mix = LAVALAND_DEFAULT_ATMOS
+
 /turf/open/floor/plating/abductor
 	name = "alien floor"
 	icon_state = "alienpod1"
 	tiled_dirt = FALSE
 
-/turf/open/floor/plating/abductor/Initialize()
+/turf/open/floor/plating/abductor/Initialize(mapload)
 	. = ..()
 	icon_state = "alienpod[rand(1,9)]"
 
@@ -26,13 +30,6 @@
 
 /turf/open/floor/plating/abductor2/try_replace_tile(obj/item/stack/tile/T, mob/user, params)
 	return
-
-/turf/open/floor/plating/astplate
-	icon_state = "asteroidplating"
-
-/turf/open/floor/plating/airless/astplate
-	icon_state = "asteroidplating"
-
 
 /turf/open/floor/plating/ashplanet
 	icon = 'icons/turf/mining.dmi'
@@ -52,7 +49,7 @@
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 	tiled_dirt = FALSE
 
-/turf/open/floor/plating/ashplanet/Initialize()
+/turf/open/floor/plating/ashplanet/Initialize(mapload)
 	if(smooth)
 		var/matrix/M = new
 		M.Translate(-4, -4)
@@ -97,7 +94,7 @@
 	clawfootstep = FOOTSTEP_HARD_CLAW
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 
-/turf/open/floor/plating/ashplanet/wateryrock/Initialize()
+/turf/open/floor/plating/ashplanet/wateryrock/Initialize(mapload)
 	icon_state = "[icon_state][rand(1, 9)]"
 	. = ..()
 
@@ -157,7 +154,7 @@
 	clawfootstep = FOOTSTEP_SAND
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 
-/turf/open/floor/plating/ironsand/Initialize()
+/turf/open/floor/plating/ironsand/Initialize(mapload)
 	. = ..()
 	icon_state = "ironsand[rand(1,15)]"
 
@@ -173,7 +170,7 @@
 	icon = 'icons/turf/floors/ice_turf.dmi'
 	icon_state = "unsmooth"
 	initial_gas_mix = FROZEN_ATMOS
-	temperature = 180
+	initial_temperature = 180
 	planetary_atmos = TRUE
 	baseturfs = /turf/open/floor/plating/ice
 	slowdown = 1
@@ -184,7 +181,7 @@
 	clawfootstep = FOOTSTEP_HARD_CLAW
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 
-/turf/open/floor/plating/ice/Initialize()
+/turf/open/floor/plating/ice/Initialize(mapload)
 	. = ..()
 	MakeSlippery(TURF_WET_PERMAFROST, INFINITY, 0, INFINITY, TRUE)
 
@@ -196,12 +193,11 @@
 	smooth = SMOOTH_MORE | SMOOTH_BORDER
 	canSmoothWith = list(/turf/open/floor/plating/ice/smooth, /turf/open/floor/plating/ice, /turf/open/floor/plating/ice/colder)
 
-
 /turf/open/floor/plating/ice/colder
-	temperature = 140
+	initial_temperature = 140
 
 /turf/open/floor/plating/ice/temperate
-	temperature = 255.37
+	initial_temperature = 255.37
 
 /turf/open/floor/plating/ice/break_tile()
 	return
@@ -216,7 +212,7 @@
 	icon = 'icons/turf/snow.dmi'
 	icon_state = "snowplating"
 	initial_gas_mix = FROZEN_ATMOS
-	temperature = 180
+	initial_temperature = 180
 	attachment_holes = FALSE
 	planetary_atmos = TRUE
 	footstep = FOOTSTEP_SAND
@@ -225,7 +221,7 @@
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 
 /turf/open/floor/plating/snowed/cavern
-	initial_gas_mix = "o2=0;n2=82;plasma=24;TEMP=120"
+	initial_gas_mix = "n2=82;plasma=24;TEMP=120"
 
 /turf/open/floor/plating/snowed/smoothed
 	smooth = SMOOTH_MORE | SMOOTH_BORDER
@@ -235,8 +231,8 @@
 	icon_state = "smooth"
 
 /turf/open/floor/plating/snowed/colder
-	temperature = 140
+	initial_temperature = 140
 
 /turf/open/floor/plating/snowed/temperatre
-	temperature = 255.37
+	initial_temperature = 255.37
 

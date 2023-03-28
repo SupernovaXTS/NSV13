@@ -1,7 +1,7 @@
 //MAP CONVERTED BY dmm2tgm.py THIS HEADER COMMENT PREVENTS RECONVERSION, DO NOT REMOVE
 "h" = (
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
 "o" = (
 /turf/closed/mineral,
 /area/ruin/powered)
@@ -13,6 +13,10 @@
 /obj/item/folder/syndicate/mining,
 /turf/open/floor/plating,
 /area/ruin/powered)
+"J" = (
+/obj/effect/landmark/dropship_entry,
+/turf/template_noop,
+/area/template_noop)
 "M" = (
 /obj/machinery/door/airlock/vault/ship{
 	name = "Vault";
@@ -1481,7 +1485,7 @@ h
 h
 h
 h
-h
+J
 h
 h
 h

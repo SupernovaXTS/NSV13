@@ -1,7 +1,7 @@
 //MAP CONVERTED BY dmm2tgm.py THIS HEADER COMMENT PREVENTS RECONVERSION, DO NOT REMOVE
 "aa" = (
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
 "ab" = (
 /turf/closed/mineral,
 /area/ruin/powered)
@@ -255,8 +255,8 @@
 /area/ruin/powered)
 "aD" = (
 /obj/structure/chair/wood/wings{
-	icon_state = "wooden_chair_wings";
-	dir = 1
+	dir = 1;
+	icon_state = "wooden_chair_wings"
 	},
 /turf/open/floor/monotile,
 /area/ruin/powered)
@@ -393,12 +393,16 @@
 /area/ruin/powered)
 "aZ" = (
 /obj/structure/lattice,
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
 "ba" = (
 /obj/structure/lattice/catwalk,
-/turf/open/space/basic,
-/area/space)
+/turf/template_noop,
+/area/template_noop)
+"ni" = (
+/obj/effect/landmark/dropship_entry,
+/turf/template_noop,
+/area/template_noop)
 
 (1,1,1) = {"
 aa
@@ -1820,7 +1824,7 @@ aa
 aa
 aa
 aa
-aa
+ni
 aa
 aa
 aa

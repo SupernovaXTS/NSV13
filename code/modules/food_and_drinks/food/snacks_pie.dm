@@ -44,7 +44,7 @@
 	if(ishuman(hit_atom))
 		var/mob/living/carbon/human/H = hit_atom
 		var/mutable_appearance/creamoverlay = mutable_appearance('icons/effects/creampie.dmi')
-		if(H.dna.species.limbs_id == "lizard")
+		if(istype(H.get_bodypart(BODY_ZONE_HEAD), /obj/item/bodypart/head/lizard))
 			creamoverlay.icon_state = "creampie_lizard"
 		else
 			creamoverlay.icon_state = "creampie_human"
@@ -52,7 +52,7 @@
 			H.Paralyze(20) //splat!
 		H.adjust_blurriness(1)
 		H.visible_message("<span class='warning'>[H] is creamed by [src]!</span>", "<span class='userdanger'>You've been creamed by [src]!</span>")
-		playsound(H, "desceration", 50, TRUE)
+		playsound(H, "desecration", 50, TRUE)
 		if(!H.creamed) // one layer at a time
 			H.add_overlay(creamoverlay)
 			H.creamed = TRUE
@@ -136,7 +136,7 @@
 	tastes = list("pie" = 1, "mushroom" = 1)
 	foodtype = GRAIN | VEGETABLES
 
-/obj/item/reagent_containers/food/snacks/pie/plump_pie/Initialize()
+/obj/item/reagent_containers/food/snacks/pie/plump_pie/Initialize(mapload)
 	. = ..()
 	var/fey = prob(10)
 	if(fey)
@@ -229,10 +229,10 @@
 	tastes = list("pie" = 1, "berries" = 2)
 	foodtype = GRAIN | FRUIT
 
-/obj/item/reagent_containers/food/snacks/pie/cocolavatart
+/obj/item/reagent_containers/food/snacks/pie/cocoalavatart
 	name = "chocolate lava tart"
-	desc = "A tasty dessert made of chocaloate, with a liquid core."
-	icon_state = "cocolavatart"
+	desc = "A tasty dessert made of chocolate, with a liquid core."
+	icon_state = "cocoalavatart"
 	bonus_reagents = list(/datum/reagent/consumable/nutriment = 1, /datum/reagent/consumable/nutriment/vitamin = 4)
 	list_reagents = list(/datum/reagent/consumable/nutriment = 4, /datum/reagent/consumable/nutriment/vitamin = 4)
 	tastes = list("pie" = 1, "dark chocolate" = 3)

@@ -7,11 +7,12 @@
 	state_open = FALSE
 	density = TRUE
 	req_access = list(ACCESS_KITCHEN)
+	circuit = /obj/item/circuitboard/machine/fat_sucker
 	var/processing = FALSE
 	var/start_at = NUTRITION_LEVEL_WELL_FED
 	var/stop_at = NUTRITION_LEVEL_STARVING
 	var/free_exit = TRUE //set to false to prevent people from exiting before being completely stripped of fat
-	var/bite_size = 15 //amount of nutrients we take per process
+	var/bite_size = 7.5 //amount of nutrients we take per second
 	var/nutrients //amount of nutrients we got build up
 	var/nutrient_to_meat = 90 //one slab of meat gives about 52 nutrition
 	var/datum/looping_sound/microwave/soundloop //100% stolen from microwaves
@@ -27,24 +28,31 @@
 	"Unsaturated fat, that is monounsaturated fats, polyunsaturated fats and omega-3 fatty acids, is found in plant foods and fish." \
 	)
 
-/obj/machinery/fat_sucker/Initialize()
+/obj/machinery/fat_sucker/Initialize(mapload)
 	. = ..()
-	soundloop = new(list(src),  FALSE)
+	soundloop = new(src,  FALSE)
 	update_icon()
+
+/obj/machinery/fat_sucker/Destroy()
+	QDEL_NULL(soundloop)
+	return ..()
 
 /obj/machinery/fat_sucker/RefreshParts()
 	..()
 	var/rating = 0
+	var/nutriment_rating
 	for(var/obj/item/stock_parts/micro_laser/L in component_parts)
 		rating += L.rating
-	bite_size = initial(bite_size) + rating * 5
-	nutrient_to_meat = initial(nutrient_to_meat) - rating * 5
+	for(var/obj/item/stock_parts/manipulator/M in component_parts)
+		nutriment_rating += M.rating
+	bite_size = initial(bite_size) + rating * 2.5
+	nutrient_to_meat = initial(nutrient_to_meat) - nutriment_rating * 5
 
 /obj/machinery/fat_sucker/examine(mob/user)
 	. = ..()
-	. += {"<span class='notice'>Alt-Click to toggle the safety hatch.</span>
-				<span class='notice'>Removing [bite_size] nutritional units per operation.</span>
-				<span class='notice'>Requires [nutrient_to_meat] nutritional units per meat slab.</span>"}
+	. += "<span class='notice'>Alt-Click to toggle the safety hatch.</span>\n"+\
+			"<span class='notice'>Removing [bite_size] nutritional units per operation.</span>\n"+\
+			"<span class='notice'>Requires [nutrient_to_meat] nutritional units per meat slab.</span>"
 
 /obj/machinery/fat_sucker/close_machine(mob/user)
 	if(panel_open)
@@ -53,10 +61,12 @@
 	..()
 	playsound(src, 'sound/machines/click.ogg', 50)
 	if(occupant)
-		if(!iscarbon(occupant))
+		var/mob/living/L = occupant
+		if(!iscarbon(L) || HAS_TRAIT(L, TRAIT_POWERHUNGRY) || !(MOB_ORGANIC in L?.mob_biotypes))
 			occupant.forceMove(drop_location())
 			occupant = null
 			return
+
 		to_chat(occupant, "<span class='notice'>You enter [src]</span>")
 		addtimer(CALLBACK(src, .proc/start_extracting), 20, TIMER_OVERRIDE|TIMER_UNIQUE)
 		update_icon()
@@ -127,10 +137,10 @@
 	if(panel_open)
 		overlays += "[icon_state]_panel"
 
-/obj/machinery/fat_sucker/process()
+/obj/machinery/fat_sucker/process(delta_time)
 	if(!processing)
 		return
-	if(!powered() || !occupant || !iscarbon(occupant))
+	if(!is_operational || !occupant || !iscarbon(occupant))
 		open_machine()
 		return
 
@@ -139,8 +149,8 @@
 		open_machine()
 		playsound(src, 'sound/machines/microwave/microwave-end.ogg', 100, FALSE)
 		return
-	C.adjust_nutrition(-bite_size)
-	nutrients += bite_size
+	C.adjust_nutrition(-bite_size * delta_time)
+	nutrients += bite_size * delta_time
 
 	if(next_fact <= 0)
 		next_fact = initial(next_fact)
@@ -151,7 +161,7 @@
 	use_power(500)
 
 /obj/machinery/fat_sucker/proc/start_extracting()
-	if(state_open || !occupant || processing || !powered())
+	if(state_open || !occupant || processing || !is_operational)
 		return
 	if(iscarbon(occupant))
 		var/mob/living/carbon/C = occupant
@@ -174,6 +184,13 @@
 	if(occupant && iscarbon(occupant))
 		var/mob/living/carbon/C = occupant
 		if(C.type_of_meat)
+			// Someone changed component rating high enough so it requires negative amount of nutrients to create a meat slab
+			if(nutrient_to_meat < 0)
+				occupant.forceMove(drop_location())
+				occupant = null
+				explosion(loc, 0, 1, 2, 3, TRUE)
+				qdel(src)
+				return
 			if(nutrients >= nutrient_to_meat * 2)
 				C.put_in_hands(new /obj/item/reagent_containers/food/snacks/cookie (), TRUE)
 			while(nutrients >= nutrient_to_meat)

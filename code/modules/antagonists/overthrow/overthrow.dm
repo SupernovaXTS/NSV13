@@ -65,21 +65,13 @@
 // CLOWNMUT removal and HUD creation/being given
 /datum/antagonist/overthrow/apply_innate_effects()
 	..()
-	if(owner.assigned_role == "Clown")
-		var/mob/living/carbon/human/traitor_mob = owner.current
-		if(traitor_mob && istype(traitor_mob))
-			if(!silent)
-				to_chat(traitor_mob, "Your training has allowed you to overcome your clownish nature, allowing you to wield weapons without harming yourself.")
-			traitor_mob.dna.remove_mutation(CLOWNMUT)
+	handle_clown_mutation(owner.current, "Your training has allowed you to overcome your clownish nature, allowing you to wield weapons without harming yourself.")
 	update_overthrow_icons_added()
 
 // The opposite
 /datum/antagonist/overthrow/remove_innate_effects()
 	update_overthrow_icons_removed()
-	if(owner.assigned_role == "Clown")
-		var/mob/living/carbon/human/traitor_mob = owner.current
-		if(traitor_mob && istype(traitor_mob))
-			traitor_mob.dna.add_mutation(CLOWNMUT)
+	handle_clown_mutation(owner.current, removing=FALSE)
 	..()
 
 /datum/antagonist/overthrow/get_admin_commands()
@@ -128,9 +120,9 @@
 	// Give AI hacking board
 	var/obj/item/aiModule/core/full/overthrow/O = new(H)
 	var/list/slots = list (
-		"backpack" = SLOT_IN_BACKPACK,
-		"left pocket" = SLOT_L_STORE,
-		"right pocket" = SLOT_R_STORE
+		"backpack" = ITEM_SLOT_BACKPACK,
+		"left pocket" = ITEM_SLOT_LPOCKET,
+		"right pocket" = ITEM_SLOT_RPOCKET
 	)
 	var/where = H.equip_in_one_of_slots(O, slots)
 	if (!where)

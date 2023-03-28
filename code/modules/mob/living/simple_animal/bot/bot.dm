@@ -4,9 +4,7 @@
 	layer = MOB_LAYER
 	gender = NEUTER
 	mob_biotypes = list(MOB_ROBOTIC)
-	light_range = 3
-	stop_automated_movement = 1
-	wander = 0
+	wander = FALSE
 	healable = 0
 	damage_coeff = list(BRUTE = 1, BURN = 1, TOX = 0, CLONE = 0, STAMINA = 0, OXY = 0)
 	atmos_requirements = list("min_oxy" = 0, "max_oxy" = 0, "min_tox" = 0, "max_tox" = 0, "min_co2" = 0, "max_co2" = 0, "min_n2" = 0, "max_n2" = 0)
@@ -24,6 +22,12 @@
 	speech_span = SPAN_ROBOT
 	faction = list("neutral", "silicon" , "turret")
 	hardattacks = TRUE
+	light_system = MOVABLE_LIGHT
+	light_range = 3
+	light_power = 0.9
+
+	mobchatspan = "mime"
+	discovery_points = 0
 
 	var/obj/machinery/bot_core/bot_core = null
 	var/bot_core_type = /obj/machinery/bot_core
@@ -70,6 +74,11 @@
 
 	var/blockcount = 0		//number of times retried a blocked path
 	var/awaiting_beacon	= 0	// count of pticks awaiting a beacon response
+
+	var/turf/last_waypoint
+	var/bot_z_mode //SETTINGS: 10 = AI CALLED. 20 = PATROLLING. 30 = SOMEONE CALLED.
+	var/turf/original_patrol
+	var/turf/last_summon
 
 	var/nearest_beacon			// the nearest beacon's tag
 	var/turf/nearest_beacon_loc	// the nearest beacon's location
@@ -125,7 +134,7 @@
 		return FALSE
 	on = TRUE
 	update_mobility()
-	set_light(initial(light_range))
+	set_light_on(on)
 	update_icon()
 	diag_hud_set_botstat()
 	return TRUE
@@ -133,11 +142,11 @@
 /mob/living/simple_animal/bot/proc/turn_off()
 	on = FALSE
 	update_mobility()
-	set_light(0)
+	set_light_on(on)
 	bot_reset() //Resets an AI's call, should it exist.
 	update_icon()
 
-/mob/living/simple_animal/bot/Initialize()
+/mob/living/simple_animal/bot/Initialize(mapload)
 	. = ..()
 	GLOB.bots_list += src
 	access_card = new /obj/item/card/id(src)
@@ -181,9 +190,9 @@
 	GLOB.bots_list -= src
 	if(paicard)
 		ejectpai()
-	qdel(Radio)
-	qdel(access_card)
-	qdel(bot_core)
+	QDEL_NULL(Radio)
+	QDEL_NULL(access_card)
+	QDEL_NULL(bot_core)
 	return ..()
 
 /mob/living/simple_animal/bot/bee_friendly()
@@ -370,22 +379,16 @@
 	else
 		say(message)
 
-/mob/living/simple_animal/bot/radio(message, message_mode, list/spans, language)
+/mob/living/simple_animal/bot/radio(message, list/message_mods = list(), list/spans, language)
 	. = ..()
 	if(. != 0)
 		return
 
-	switch(message_mode)
-		if(MODE_HEADSET)
-			Radio.talk_into(src, message, , spans, language)
-			return REDUCE_RANGE
-
-		if(MODE_DEPARTMENT)
-			Radio.talk_into(src, message, message_mode, spans, language)
-			return REDUCE_RANGE
-
-	if(message_mode in GLOB.radiochannels)
-		Radio.talk_into(src, message, message_mode, spans, language)
+	if(message_mods[MODE_HEADSET])
+		Radio.talk_into(src, message, , spans, language, message_mods)
+		return REDUCE_RANGE
+	else if(message_mods[RADIO_EXTENSION] == MODE_DEPARTMENT || (message_mods[RADIO_EXTENSION] in GLOB.radiochannels))
+		Radio.talk_into(src, message, message_mods[RADIO_EXTENSION], spans, language, message_mods)
 		return REDUCE_RANGE
 
 /mob/living/simple_animal/bot/proc/drop_part(obj/item/drop_item, dropzone)
@@ -427,30 +430,50 @@ Pass the desired type path itself, declaring a temporary var beforehand is not r
 	if(!T)
 		return
 	var/list/adjacent = T.GetAtmosAdjacentTurfs(1)
+	var/atom/final_result
+	var/static/list/turf_typecache = typecacheof(/turf)
 	if(shuffle)	//If we were on the same tile as another bot, let's randomize our choices so we dont both go the same way
 		adjacent = shuffle(adjacent)
 		shuffle = FALSE
-	for(var/scan in adjacent)//Let's see if there's something right next to us first!
+	for(var/turf/scan as() in adjacent)//Let's see if there's something right next to us first!
 		if(check_bot(scan))	//Is there another bot there? Then let's just skip it
 			continue
-		if(isturf(scan_type))	//If we're lookeing for a turf we can just run the checks directly!
-			var/final_result = checkscan(scan,scan_type,old_target)
+		if(turf_typecache[scan_type])	//If we're lookeing for a turf we can just run the checks directly!
+			if(!istype(scan, scan_type))
+				continue
+			final_result = checkscan(scan,old_target)
 			if(final_result)
 				return final_result
 		else
-			var/turf/turfy = scan
-			for(var/deepscan in turfy.contents)//Check the contents since adjacent is turfs
-				var/final_result = checkscan(deepscan,scan_type,old_target)
+			for(var/deepscan in scan.contents)//Check the contents since adjacent is turfs
+				if(!istype(deepscan, scan_type))
+					continue
+				final_result = checkscan(deepscan,old_target)
 				if(final_result)
 					return final_result
-	for (var/scan in shuffle(view(scan_range, src))-adjacent) //Search for something in range!
-		var/final_result = checkscan(scan,scan_type,old_target)
-		if(final_result)
-			return final_result
 
-/mob/living/simple_animal/bot/proc/checkscan(scan, scan_type, old_target)
-	if(!istype(scan, scan_type)) //Check that the thing we found is the type we want!
-		return FALSE //If not, keep searching!
+	var/list/wider_search_list = list()
+	for(var/turf/RT in oview(scan_range, src))
+		if(!(RT in adjacent))
+			wider_search_list += RT
+	wider_search_list = shuffle(wider_search_list) // Do we *really* need shuffles? Future coders should decide this.
+	if(turf_typecache[scan_type])
+		for(var/turf/scan as() in wider_search_list)
+			if(!istype(scan, scan_type))
+				continue
+			final_result = checkscan(scan,old_target)
+			if(final_result)
+				return final_result
+	else
+		for(var/turf/scan as() in wider_search_list)
+			for(var/deepscan in scan.contents) // view() barely checks contents of contents of turfs anyway
+				if(!istype(deepscan, scan_type))
+					continue
+				final_result = checkscan(deepscan,old_target)
+				if(final_result)
+					return final_result
+
+/mob/living/simple_animal/bot/proc/checkscan(scan, old_target)
 	if( (REF(scan) in ignore_list) || (scan == old_target) ) //Filter for blacklisted elements, usually unreachable or previously processed oness
 		return FALSE
 
@@ -518,6 +541,9 @@ Pass a positive integer as an argument to override a bot's default speed.
 			return FALSE
 	else if(path.len == 1)
 		step_to(src, dest)
+		if(last_waypoint != null)
+			if(z != last_waypoint.z)
+				bot_z_movement()
 		set_path(null)
 	return TRUE
 
@@ -534,9 +560,16 @@ Pass a positive integer as an argument to override a bot's default speed.
 	var/datum/job/captain/All = new/datum/job/captain
 	all_access.access = All.get_access()
 
-	set_path(get_path_to(src, waypoint, /turf/proc/Distance_cardinal, 0, 200, id=all_access))
 	calling_ai = caller //Link the AI to the bot!
 	ai_waypoint = waypoint
+	last_waypoint = ai_waypoint
+
+	if(!is_reserved_level(z))
+		if(z != waypoint.z)
+			call_bot_z_move(caller, waypoint)
+			return
+
+	set_path(get_path_to(src, waypoint, 200, id=all_access))
 
 	if(path && path.len) //Ensures that a valid path is calculated!
 		var/end_area = get_area_name(waypoint)
@@ -630,6 +663,10 @@ Pass a positive integer as an argument to override a bot's default speed.
 		return
 
 	if(loc == patrol_target)		// reached target
+		if(original_patrol != null)
+			if(z != original_patrol.z)
+				bot_z_movement()
+				return
 		//Find the next beacon matching the target.
 		if(!get_next_patrol_target())
 			find_patrol_target() //If it fails, look for the nearest one instead.
@@ -667,27 +704,32 @@ Pass a positive integer as an argument to override a bot's default speed.
 
 /mob/living/simple_animal/bot/proc/get_next_patrol_target()
 	// search the beacon list for the next target in the list.
-	for(var/obj/machinery/navbeacon/NB in GLOB.navbeacons["[z]"])
-		if(NB.location == next_destination) //Does the Beacon location text match the destination?
-			destination = new_destination //We now know the name of where we want to go.
-			patrol_target = NB.loc //Get its location and set it as the target.
-			next_destination = NB.codes["next_patrol"] //Also get the name of the next beacon in line.
-			return TRUE
+	for(var/obj/machinery/navbeacon/NB in get_overmap().beacons_in_ship) //NSV13 - Navbeacons are in the Overmap Ship
+		if(NB.codes["next_patrol"] != null) //NSV13
+			if(NB.location == next_destination) //Does the Beacon location text match the destination?
+				destination = new_destination //We now know the name of where we want to go.
+				patrol_target = NB.loc //Get its location and set it as the target.
+				original_patrol = NB.loc
+				next_destination = NB.codes["next_patrol"] //Also get the name of the next beacon in line.
+				return TRUE
 
 /mob/living/simple_animal/bot/proc/find_nearest_beacon()
-	for(var/obj/machinery/navbeacon/NB in GLOB.navbeacons["[z]"])
-		var/dist = get_dist(src, NB)
-		if(nearest_beacon) //Loop though the beacon net to find the true closest beacon.
-			//Ignore the beacon if were are located on it.
-			if(dist>1 && dist<get_dist(src,nearest_beacon_loc))
+	for(var/obj/machinery/navbeacon/NB in get_overmap().beacons_in_ship) //NSV13 - Navbeacons are in the Overmap Ship
+		if(NB.codes["next_patrol"] != null) //NSV13
+			var/dist = get_dist(src, NB)
+			if(nearest_beacon) //Loop though the beacon net to find the true closest beacon.
+				//Ignore the beacon if were are located on it.
+				if(dist>1 && dist<get_dist(src,nearest_beacon_loc))
+					nearest_beacon = NB.location
+					nearest_beacon_loc = NB.loc
+					next_destination = NB.codes["next_patrol"]
+				else
+					continue
+			else if(dist > 1) //Begin the search, save this one for comparison on the next loop.
 				nearest_beacon = NB.location
 				nearest_beacon_loc = NB.loc
-				next_destination = NB.codes["next_patrol"]
-			else
-				continue
-		else if(dist > 1) //Begin the search, save this one for comparison on the next loop.
-			nearest_beacon = NB.location
-			nearest_beacon_loc = NB.loc
+		else //NSV13
+			continue //NSV13
 	patrol_target = nearest_beacon_loc
 	destination = nearest_beacon
 
@@ -748,12 +790,28 @@ Pass a positive integer as an argument to override a bot's default speed.
 // given an optional turf to avoid
 /mob/living/simple_animal/bot/proc/calc_path(turf/avoid)
 	check_bot_access()
-	set_path(get_path_to(src, patrol_target, /turf/proc/Distance_cardinal, 0, 120, id=access_card, exclude=avoid))
+	if(!is_reserved_level(z))
+		if(patrol_target != null)
+			if(z > patrol_target.z)
+				go_up_or_down(DOWN)
+				return
+			if(z < patrol_target.z)
+				go_up_or_down(UP)
+				return
+	set_path(get_path_to(src, patrol_target, 120, id=access_card, exclude=avoid))
 
 /mob/living/simple_animal/bot/proc/calc_summon_path(turf/avoid)
 	check_bot_access()
 	spawn()
-		set_path(get_path_to(src, summon_target, /turf/proc/Distance_cardinal, 0, 150, id=access_card, exclude=avoid))
+		if(!is_reserved_level(z))
+			if(summon_target != null)
+				if(z > summon_target.z)
+					summon_up_or_down(DOWN)
+					return
+				if(z < summon_target.z)
+					summon_up_or_down(UP)
+					return
+		set_path(get_path_to(src, summon_target, 150, id=access_card, exclude=avoid))
 		if(!path.len) //Cannot reach target. Give up and announce the issue.
 			speak("Summon command failed, destination unreachable.",radio_channel)
 			bot_reset()
@@ -764,6 +822,10 @@ Pass a positive integer as an argument to override a bot's default speed.
 		return
 
 	if(loc == summon_target)		// Arrived to summon location.
+		if(last_summon != null)
+			if(z != last_summon.z)
+				bot_z_movement()
+				return
 		bot_reset()
 		return
 
@@ -779,6 +841,9 @@ Pass a positive integer as an argument to override a bot's default speed.
 				tries = 0
 
 	else	// no path, so calculate new one
+		if(summon_target != null)
+			if(z != summon_target.z)
+				last_summon = summon_target
 		calc_summon_path()
 
 /mob/living/simple_animal/bot/Bump(M as mob|obj) //Leave no door unopened!
@@ -858,21 +923,23 @@ Pass a positive integer as an argument to override a bot's default speed.
 	update_controls()
 
 /mob/living/simple_animal/bot/update_icon_state()
+	. = ..()
 	icon_state = "[initial(icon_state)][on]"
 
 // Machinery to simplify topic and access calls
 /obj/machinery/bot_core
 	use_power = NO_POWER_USE
 	anchored = FALSE
-	var/mob/living/simple_animal/bot/owner = null
 
-/obj/machinery/bot_core/Initialize()
+/obj/machinery/bot_core/Initialize(mapload)
 	. = ..()
-	owner = loc
-	if(!istype(owner))
+	if(!isbot(loc))
 		return INITIALIZE_HINT_QDEL
 
 /mob/living/simple_animal/bot/proc/topic_denied(mob/user) //Access check proc for bot topics! Remember to place in a bot's individual Topic if desired.
+	//Silicons cannot remotely interfact with robots while the robot is jammed
+	if(issilicon(user) && is_jammed())
+		return TRUE
 	if(!user.canUseTopic(src, !issilicon(user)))
 		return TRUE
 	// 0 for access, 1 for denied.
@@ -925,7 +992,7 @@ Pass a positive integer as an argument to override a bot's default speed.
 				bot_name = name
 				name = paicard.pai.name
 				faction = user.faction.Copy()
-				language_holder = paicard.pai.copy_languages(src)
+				copy_languages(paicard.pai)
 				log_combat(user, paicard.pai, "uploaded to [bot_name],")
 				return TRUE
 			else
@@ -933,7 +1000,7 @@ Pass a positive integer as an argument to override a bot's default speed.
 		else
 			to_chat(user, "<span class='warning'>The personality slot is locked.</span>")
 	else
-		to_chat(user, "<span class='warning'>[src] is not compatible with [card]</span>")
+		to_chat(user, "<span class='warning'>[src] is not compatible with [card].</span>")
 
 /mob/living/simple_animal/bot/proc/ejectpai(mob/user = null, announce = 1)
 	if(paicard)
@@ -1001,7 +1068,7 @@ Pass a positive integer as an argument to override a bot's default speed.
 			var/turf/T = newpath[i]
 			if(T == loc) //don't bother putting an image if it's where we already exist.
 				continue
-			var/direction = NORTH
+			var/direction = get_dir(src, T)
 			if(i > 1)
 				var/turf/prevT = path[i - 1]
 				var/image/prevI = path[prevT]
@@ -1024,7 +1091,7 @@ Pass a positive integer as an argument to override a bot's default speed.
 			MA.icon = path_image_icon
 			MA.icon_state = path_image_icon_state
 			MA.layer = ABOVE_OPEN_TURF_LAYER
-			MA.plane = 0
+			MA.plane = GAME_PLANE
 			MA.appearance_flags = RESET_COLOR|RESET_TRANSFORM
 			MA.color = path_image_color
 			MA.dir = direction
@@ -1048,3 +1115,149 @@ Pass a positive integer as an argument to override a bot's default speed.
 
 /mob/living/simple_animal/bot/rust_heretic_act()
 	adjustBruteLoss(400)
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//Multi-Z Related section
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
+ * Finds nearest bot elevator.
+ *
+ * Arguments:
+ * * direciton - UP or DOWN.
+ */
+/mob/living/simple_animal/bot/proc/find_nearest_bot_elevator(direction)
+	if(!direction)
+		return
+	if(direction != UP && direction != DOWN)
+		return
+
+	var/target
+	for(var/obj/structure/bot_elevator/elevat in GLOB.bot_elevator)
+		if(elevat.z != z)
+			continue
+		if(direction == UP && !elevat.up)
+			continue
+		if(direction == DOWN && !elevat.down)
+			continue
+		if(!target)
+			target = elevat
+			continue
+		if(get_dist_euclidian(elevat, src) > get_dist_euclidian(target, src))
+			continue
+		target = elevat
+	return target
+
+/**
+ *
+ * Makes the bot move up or down a Z-level depending on the bot_z_mode
+ * and the original destination
+ */
+/mob/living/simple_animal/bot/proc/bot_z_movement()
+	var/obj/structure/bot_elevator/E = locate(/obj/structure/bot_elevator) in get_turf(src)
+	if(bot_z_mode == BOT_Z_MODE_AI_CALLED)
+		if(E)
+			if(z > last_waypoint.z)
+				E.travel(FALSE, src, FALSE, E.down, FALSE)
+				ai_waypoint = last_waypoint
+				call_bot(calling_ai, ai_waypoint)
+			else
+				E.travel(TRUE, src, FALSE, E.up, FALSE)
+				ai_waypoint = last_waypoint
+				call_bot(calling_ai, ai_waypoint)
+
+	if(bot_z_mode == BOT_Z_MODE_PATROLLING)
+		if(E)
+			if(z > original_patrol.z)
+				E.travel(FALSE, src, FALSE, E.down, FALSE)
+				patrol_target = original_patrol
+				calc_path()
+			else
+				E.travel(TRUE, src, FALSE, E.up, FALSE)
+				patrol_target = original_patrol
+				calc_path()
+	if(bot_z_mode == BOT_Z_MODE_SUMMONED)
+		if(E)
+			if(z > last_summon.z)
+				E.travel(FALSE, src, FALSE, E.down, FALSE)
+				summon_target = last_summon
+				calc_summon_path()
+			else if(z < last_summon.z)
+				E.travel(TRUE, src, FALSE, E.up, FALSE)
+				summon_target = last_summon
+				calc_summon_path()
+
+//BOT MULTI-Z MOVEMENT
+/mob/living/simple_animal/bot/proc/call_bot_z_move(caller, turf/ori_dest, message=TRUE)
+	//For giving the bot temporary all-access.
+	var/obj/item/card/id/all_access = new /obj/item/card/id
+	var/datum/job/captain/all = new/datum/job/captain
+	all_access.access = all.get_access()
+	bot_z_mode = BOT_Z_MODE_AI_CALLED
+
+	var/target
+	var/turf/destination
+	if(!is_reserved_level(z))
+		if(z > ori_dest.z)
+			target = DOWN
+		if(z < ori_dest.z)
+			target = UP
+
+	if(target == UP || target == DOWN)
+		var/new_target = find_nearest_bot_elevator(target)
+
+		if(!new_target)
+			return
+
+		destination = get_turf(new_target)
+
+	set_path(get_path_to(src, destination, 200, id=all_access))
+	ai_waypoint = destination
+
+	if(path && path.len) //Ensures that a valid path is calculated!
+		var/end_area = get_area_name(destination)
+		if(!on)
+			turn_on() //Saves the AI the hassle of having to activate a bot manually.
+		access_card = all_access //Give the bot all-access while under the AI's command.
+		if(client)
+			reset_access_timer_id = addtimer(CALLBACK (src, .proc/bot_reset), 600, TIMER_UNIQUE|TIMER_OVERRIDE|TIMER_STOPPABLE) //if the bot is player controlled, they get the extra access for a limited time
+			to_chat(src, "<span class='notice'><span class='big'>Priority waypoint set by [icon2html(calling_ai, src)] <b>[caller]</b>. Proceed to <b>[end_area]</b>.</span><br>[path.len-1] meters to destination. You have been granted additional door access for 60 seconds.</span>")
+		pathset = 1
+		mode = BOT_RESPONDING
+		tries = 0
+	else
+		if(message)
+			to_chat(calling_ai, "<span class='danger'>Failed to calculate a valid route. Ensure destination is clear of obstructions and within range.</span>")
+		calling_ai = null
+		set_path(null)
+
+//PATROL SECTION
+/mob/living/simple_animal/bot/proc/go_up_or_down(direction)
+	//For giving the bot temporary all-access.
+	var/obj/item/card/id/all_access = new /obj/item/card/id
+	var/datum/job/captain/all = new/datum/job/captain
+	all_access.access = all.get_access()
+	bot_z_mode = BOT_Z_MODE_PATROLLING
+
+	if(!is_reserved_level(z) && get_overmap()) //NSV13 start - Overmap ship compatibility
+		var/new_target = find_nearest_bot_elevator(direction)
+
+		if(!new_target)
+			return
+		patrol_target = get_turf(new_target)
+		set_path(get_path_to(src, patrol_target, 200, id=all_access))
+
+/mob/living/simple_animal/bot/proc/summon_up_or_down(direction)
+	bot_z_mode = BOT_Z_MODE_SUMMONED
+
+	if(!is_reserved_level(z) && get_overmap()) //NSV13 start - Overmap ship compatibility
+		var/new_target = find_nearest_bot_elevator(direction)
+
+		var/target
+		if(!new_target)
+			return
+		target = get_turf(new_target)
+		last_summon = summon_target
+		summon_target = target
+		set_path(get_path_to(src, summon_target, 200, id=access_card))
+

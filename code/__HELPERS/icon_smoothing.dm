@@ -113,6 +113,7 @@
 	if(!A || !A.smooth)
 		return
 	A.smooth &= ~SMOOTH_QUEUED
+	A.flags_1 |= HTML_USE_INITAL_ICON_1
 	if (!A.z)
 		return
 	if(QDELETED(A))
@@ -381,8 +382,7 @@
 
 //SSicon_smooth
 /proc/queue_smooth_neighbors(atom/A)
-	for(var/V in orange(1,A))
-		var/atom/T = V
+	for(var/atom/T as() in orange(1,A))
 		if(T.smooth)
 			queue_smooth(T)
 

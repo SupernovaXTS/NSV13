@@ -6,7 +6,7 @@
 	dir_in = 1 //Facing North.
 	max_integrity = 100
 	deflect_chance = 3
-	armor = list("melee" = 25, "bullet" = 20, "laser" = 30, "energy" = 15, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100)
+	armor = list("melee" = 25, "bullet" = 20, "laser" = 30, "energy" = 15, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100, "stamina" = 0)
 	max_temperature = 15000
 	wreckage = /obj/structure/mecha_wreckage/reticence
 	operation_req_access = list(ACCESS_THEATRE)
@@ -20,7 +20,7 @@
 	turnsound = null
 	opacity = 0
 
-/obj/mecha/combat/reticence/loaded/Initialize()
+/obj/mecha/combat/reticence/loaded/Initialize(mapload)
 	. = ..()
 	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/silenced
 	ME.attach(src)

@@ -1,5 +1,5 @@
 /obj/machinery/atmospherics/components/unary/outlet_injector
-	icon_state = "inje_map-2"
+	icon_state = "inje_map-3"
 
 	name = "air injector"
 	desc = "Has a valve and pump attached to it."
@@ -19,24 +19,28 @@
 	var/datum/radio_frequency/radio_connection
 
 	level = 1
+	interacts_with_air = TRUE
 	layer = GAS_SCRUBBER_LAYER
 
 	pipe_state = "injector"
 
-	ui_x = 310
-	ui_y = 115
+
+
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/CtrlClick(mob/user)
 	if(can_interact(user))
 		on = !on
 		update_icon()
+		ui_update()
 	return ..()
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/AltClick(mob/user)
 	if(can_interact(user))
 		volume_rate = MAX_TRANSFER_RATE
+		balloon_alert(user, "You set the volume rate to [volume_rate] L/s.")
 		update_icon()
-	return ..()
+		ui_update()
+	return
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/Destroy()
 	SSradio.remove_object(src,frequency)
@@ -48,15 +52,15 @@
 		// everything is already shifted so don't shift the cap
 		add_overlay(getpipeimage(icon, "inje_cap", initialize_directions))
 
-	if(!nodes[1] || !on || !is_operational())
+	if(!nodes[1] || !on || !is_operational)
 		icon_state = "inje_off"
 	else
 		icon_state = "inje_on"
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/power_change()
-	var/old_stat = stat
+	var/old_stat = machine_stat
 	..()
-	if(old_stat != stat)
+	if(old_stat != machine_stat)
 		update_icon()
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/process_atmos()
@@ -64,24 +68,21 @@
 
 	injecting = 0
 
-	if(!on || !is_operational())
+	if(!on || !is_operational || !isopenturf(loc))
 		return
 
 	var/datum/gas_mixture/air_contents = airs[1]
 
-	if(air_contents.return_temperature() > 0)
-		var/transfer_moles = (air_contents.return_pressure())*volume_rate/(air_contents.return_temperature() * R_IDEAL_GAS_EQUATION)
+	if(air_contents != null)
+		if(air_contents.return_temperature() > 0)
+			loc.assume_air_ratio(air_contents, volume_rate / air_contents.return_volume())
+			air_update_turf()
 
-		var/datum/gas_mixture/removed = air_contents.remove(transfer_moles)
-
-		loc.assume_air(removed)
-		air_update_turf()
-
-		update_parents()
+			update_parents()
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/proc/inject()
 
-	if(on || injecting || !is_operational())
+	if(on || injecting || !is_operational)
 		return
 
 	var/datum/gas_mixture/air_contents = airs[1]
@@ -89,9 +90,7 @@
 	injecting = 1
 
 	if(air_contents.return_temperature() > 0)
-		var/transfer_moles = (air_contents.return_pressure())*volume_rate/(air_contents.return_temperature() * R_IDEAL_GAS_EQUATION)
-		var/datum/gas_mixture/removed = air_contents.remove(transfer_moles)
-		loc.assume_air(removed)
+		loc.assume_air_ratio(air_contents, volume_rate / air_contents.return_volume())
 		update_parents()
 
 	flick("inje_inject", src)
@@ -146,13 +145,17 @@
 
 	if(!("status" in signal.data)) //do not update_icon
 		update_icon()
+		ui_update()
 
 
-/obj/machinery/atmospherics/components/unary/outlet_injector/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-																		datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/atmospherics/components/unary/outlet_injector/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/atmospherics/components/unary/outlet_injector/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "AtmosPump", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "AtmosPump")
 		ui.open()
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/ui_data()
@@ -182,40 +185,41 @@
 			if(.)
 				volume_rate = clamp(rate, 0, MAX_TRANSFER_RATE)
 				investigate_log("was set to [volume_rate] L/s by [key_name(usr)]", INVESTIGATE_ATMOS)
-	update_icon()
-	broadcast_status()
+	if(.)
+		update_icon()
+		broadcast_status()
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/can_unwrench(mob/user)
 	. = ..()
-	if(. && on && is_operational())
+	if(. && on && is_operational)
 		to_chat(user, "<span class='warning'>You cannot unwrench [src], turn it off first!</span>")
 		return FALSE
 
 // mapping
 
-/obj/machinery/atmospherics/components/unary/outlet_injector/layer1
-	piping_layer = 1
-	icon_state = "inje_map-1"
+/obj/machinery/atmospherics/components/unary/outlet_injector/layer2
+	piping_layer = 2
+	icon_state = "inje_map-2"
 
-/obj/machinery/atmospherics/components/unary/outlet_injector/layer3
-	piping_layer = 3
-	icon_state = "inje_map-3"
+/obj/machinery/atmospherics/components/unary/outlet_injector/layer4
+	piping_layer = 4
+	icon_state = "inje_map-4"
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/on
 	on = TRUE
 
-/obj/machinery/atmospherics/components/unary/outlet_injector/on/layer1
-	piping_layer = 1
-	icon_state = "inje_map-1"
+/obj/machinery/atmospherics/components/unary/outlet_injector/on/layer2
+	piping_layer = 2
+	icon_state = "inje_map-2"
 
-/obj/machinery/atmospherics/components/unary/outlet_injector/on/layer3
-	piping_layer = 3
-	icon_state = "inje_map-3"
+/obj/machinery/atmospherics/components/unary/outlet_injector/on/layer4
+	piping_layer = 4
+	icon_state = "inje_map-4"
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/atmos
 	frequency = FREQ_ATMOS_STORAGE
 	on = TRUE
-	volume_rate = 200
+	volume_rate = MAX_TRANSFER_RATE
 
 /obj/machinery/atmospherics/components/unary/outlet_injector/atmos/atmos_waste
 	name = "atmos waste outlet injector"

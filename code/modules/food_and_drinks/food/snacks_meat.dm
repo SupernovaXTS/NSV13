@@ -25,13 +25,19 @@
 	tastes = list("fish" = 1)
 	foodtype = MEAT
 
-/obj/item/reagent_containers/food/snacks/carpmeat/Initialize()
+/obj/item/reagent_containers/food/snacks/carpmeat/Initialize(mapload)
 	. = ..()
 	eatverb = pick("bite","chew","gnaw","swallow","chomp")
 
 /obj/item/reagent_containers/food/snacks/carpmeat/imitation
 	name = "imitation carp fillet"
 	desc = "Almost just like the real thing, kinda."
+
+/obj/item/reagent_containers/food/snacks/carpmeat/icantbeliveitsnotcarp
+	name = "fish fillet"
+	desc = "A fillet of unspecified fish meat."
+	list_reagents = list(/datum/reagent/consumable/nutriment = 4, /datum/reagent/consumable/nutriment/vitamin = 2) //No carpotoxin
+
 
 /obj/item/reagent_containers/food/snacks/fishfingers
 	name = "fish fingers"
@@ -121,9 +127,9 @@
 	foodtype = MEAT | BREAKFAST
 	var/roasted = FALSE
 
-/obj/item/reagent_containers/food/snacks/sausage/Initialize()
+/obj/item/reagent_containers/food/snacks/sausage/Initialize(mapload)
 	. = ..()
-	eatverb = pick("bite","chew","nibble","deep throat","gobble","chomp")
+	eatverb = pick("bite","chew","nibble","gobble","chomp")
 
 /obj/item/reagent_containers/food/snacks/rawkhinkali
 	name = "raw khinkali"
@@ -160,7 +166,7 @@
 	if(GLOB.total_cube_monkeys >= CONFIG_GET(number/max_cube_monkeys))
 		visible_message("<span class='warning'>[src] refuses to expand!</span>")
 		return
-	var/mob/spammer = get_mob_by_key(fingerprintslast)
+	var/mob/spammer = get_mob_by_ckey(fingerprintslast)
 	var/mob/living/bananas = new spawned_mob(drop_location(), TRUE, spammer)
 	if(faction)
 		bananas.faction = faction
@@ -204,7 +210,7 @@
 	tastes = list("soy" = 1, "vegetables" = 1)
 	foodtype = VEGETABLES
 
-/obj/item/reagent_containers/food/snacks/stewedsoymeat/Initialize()
+/obj/item/reagent_containers/food/snacks/stewedsoymeat/Initialize(mapload)
 	. = ..()
 	eatverb = pick("slurp","sip","inhale","drink")
 
@@ -249,7 +255,7 @@
 	tastes = list("\"chicken\"" = 1)
 	foodtype = MEAT
 
-/obj/item/reagent_containers/food/snacks/nugget/Initialize()
+/obj/item/reagent_containers/food/snacks/nugget/Initialize(mapload)
 	. = ..()
 	var/shape = pick("lump", "star", "lizard", "corgi")
 	desc = "A 'chicken' nugget vaguely shaped like a [shape]."
@@ -364,7 +370,7 @@
   tastes = list("fish" = 1,"cruelty" = 2)
   foodtype = MEAT
 
-/obj/item/reagent_containers/food/snacks/dolphinmeat/Initialize()
+/obj/item/reagent_containers/food/snacks/dolphinmeat/Initialize(mapload)
   . = ..()
   eatverb = pick("bite","chew","choke down","gnaw","swallow","chomp")
 

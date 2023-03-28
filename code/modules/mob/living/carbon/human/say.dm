@@ -1,6 +1,11 @@
-/mob/living/carbon/human/say_mod(input, message_mode)
-	verb_say = dna.species.say_mod
-	if(slurring)
+/mob/living/carbon/human/say_mod(input, list/message_mods = list())
+	var/obj/item/organ/tongue/T = getorganslot(ORGAN_SLOT_TONGUE)
+	if(T)
+		verb_say = pick(T.say_mod)
+		verb_ask = pick(T.ask_mod)
+		verb_yell = pick(T.yell_mod)
+		verb_exclaim = pick(T.exclaim_mod)
+	if(slurring || !T)
 		return "slurs"
 	else
 		. = ..()
@@ -28,6 +33,9 @@
 	// how do species that don't breathe talk? magic, that's what.
 	if(!HAS_TRAIT_FROM(src, TRAIT_NOBREATH, SPECIES_TRAIT) && !getorganslot(ORGAN_SLOT_LUNGS))
 		return FALSE
+	if(dna?.species && !dna?.species.speak_no_tongue)
+		if(!getorganslot(ORGAN_SLOT_TONGUE))
+			return FALSE
 	if(mind)
 		return !mind.miming
 	return TRUE
@@ -45,37 +53,28 @@
 	return special_voice
 
 /mob/living/carbon/human/binarycheck()
-	if(..()) //NSV13- If they have the binary speaker trait. Used for synthetics
-		return TRUE
-	if(ears)
-		var/obj/item/radio/headset/dongle = ears
-		if(!istype(dongle))
-			return FALSE
-		if(dongle.translate_binary)
-			return TRUE
+	if(stat >= SOFT_CRIT || !ears)
+		return FALSE
+	var/obj/item/radio/headset/dongle = ears
+	if(!istype(dongle))
+		return FALSE
+	return dongle.translate_binary
 
-/mob/living/carbon/human/radio(message, message_mode, list/spans, language)
+/mob/living/carbon/human/radio(message, list/message_mods = list(), list/spans, language)
 	. = ..()
-	if(. != 0)
+	if(. != FALSE)
 		return .
 
-	switch(message_mode)
-		if(MODE_HEADSET)
-			if (ears)
-				ears.talk_into(src, message, , spans, language)
-			return ITALICS | REDUCE_RANGE
-
-		if(MODE_DEPARTMENT)
-			if (ears)
-				ears.talk_into(src, message, message_mode, spans, language)
-			return ITALICS | REDUCE_RANGE
-
-	if(message_mode in GLOB.radiochannels)
+	if(message_mods[MODE_HEADSET])
 		if(ears)
-			ears.talk_into(src, message, message_mode, spans, language)
+			ears.talk_into(src, message, , spans, language, message_mods)
+		return ITALICS | REDUCE_RANGE
+	else if(message_mods[RADIO_EXTENSION] == MODE_DEPARTMENT || (GLOB.radiochannels[message_mods[RADIO_EXTENSION]]))
+		if(ears)
+			ears.talk_into(src, message, message_mods[RADIO_EXTENSION], spans, language, message_mods)
 			return ITALICS | REDUCE_RANGE
 
-	return 0
+	return FALSE
 
 /mob/living/carbon/human/get_alt_name()
 	if(name != GetVoice())
@@ -88,7 +87,7 @@
 			var/say_starter = "Say \"" //"
 			if(findtextEx(temp, say_starter, 1, length(say_starter) + 1) && length(temp) > length(say_starter))	//case sensitive means
 
-				temp = trim_left(copytext(temp, length(say_starter + 1)))
+				temp = trim_left(copytext(temp, length(say_starter) + 1))
 				temp = replacetext(temp, ";", "", 1, 2)	//general radio
 				while(trim_left(temp)[1] == ":")	//dept radio again (necessary)
 					temp = copytext_char(trim_left(temp), 3)

@@ -37,7 +37,7 @@
 	var/allow_riding = TRUE
 	var/canDispose = FALSE // Whether the borg can stuff itself into disposal
 
-/obj/item/robot_module/Initialize()
+/obj/item/robot_module/Initialize(mapload)
 	. = ..()
 	for(var/i in basic_modules)
 		var/obj/item/I = new i(src)
@@ -90,7 +90,7 @@
 	if(istype(I, /obj/item/stack))
 		var/obj/item/stack/S = I
 
-		if(is_type_in_list(S, list(/obj/item/stack/sheet/iron, /obj/item/stack/rods, /obj/item/stack/tile/plasteel)))
+		if(is_type_in_list(S, list(/obj/item/stack/sheet/iron, /obj/item/stack/rods, /obj/item/stack/tile/plasteel, /obj/item/stack/tile/light)))
 			if(S.materials[/datum/material/iron])
 				S.cost = S.materials[/datum/material/iron] * 0.25
 			S.source = get_or_create_estorage(/datum/robot_energy_storage/metal)
@@ -198,6 +198,7 @@
 	R.module = RM
 	R.update_module_innate()
 	RM.rebuild_modules()
+	R.set_modularInterface_theme()
 	INVOKE_ASYNC(RM, .proc/do_transform_animation)
 	qdel(src)
 	return RM
@@ -224,22 +225,39 @@
 	sleep(1)
 	flick("[cyborg_base_icon]_transform", R)
 	R.notransform = TRUE
-	R.SetLockdown(1)
+	R.SetLockdown(TRUE)
 	R.anchored = TRUE
+	R.logevent("Chassis configuration has been set to [name].")
 	sleep(1)
 	for(var/i in 1 to 4)
 		playsound(R, pick('sound/items/drill_use.ogg', 'sound/items/jaws_cut.ogg', 'sound/items/jaws_pry.ogg', 'sound/items/welder.ogg', 'sound/items/ratchet.ogg'), 80, 1, -1)
 		sleep(7)
 	if(!prev_lockcharge)
-		R.SetLockdown(0)
+		R.SetLockdown(FALSE)
 	R.setDir(SOUTH)
 	R.anchored = FALSE
 	R.notransform = FALSE
-	R.update_headlamp()
+	R.update_icons()
 	R.notify_ai(NEW_MODULE)
 	if(R.hud_used)
 		R.hud_used.update_robot_modules_display()
 	SSblackbox.record_feedback("tally", "cyborg_modules", 1, R.module)
+
+/**
+ * Checks if we are allowed to interact with a radial menu
+ *
+ * Arguments:
+ * * user The cyborg mob interacting with the menu
+ * * old_module The old cyborg's module
+ */
+/obj/item/robot_module/proc/check_menu(mob/living/silicon/robot/user, obj/item/robot_module/old_module)
+	if(!istype(user))
+		return FALSE
+	if(user.incapacitated())
+		return FALSE
+	if(user.module != old_module)
+		return FALSE
+	return TRUE
 
 /obj/item/robot_module/standard
 	name = "Standard"
@@ -268,7 +286,7 @@
 		/obj/item/clock_module/abstraction_crystal,
 		/obj/item/clockwork/replica_fabricator,
 		/obj/item/stack/tile/brass/cyborg,
-		/obj/item/twohanded/clockwork/brass_spear)
+		/obj/item/clockwork/weapon/brass_spear)
 	moduleselect_icon = "standard"
 	hat_offset = -3
 
@@ -289,6 +307,7 @@
 		/obj/item/surgicaldrill,
 		/obj/item/scalpel,
 		/obj/item/circular_saw,
+		/obj/item/blood_filter,
 		/obj/item/extinguisher/mini,
 		/obj/item/roller/robo,
 		/obj/item/borg/cyborghug/medical,
@@ -315,7 +334,6 @@
 		/obj/item/construction/rcd/borg,
 		/obj/item/pipe_dispenser,
 		/obj/item/extinguisher,
-		/obj/item/extinguisher/advanced/hull_repair_juice, //Listen. It just works, ok?
 		/obj/item/weldingtool/largetank/cyborg,
 		/obj/item/screwdriver/cyborg,
 		/obj/item/wrench/cyborg,
@@ -350,7 +368,7 @@
 	hat_offset = -4
 
 /obj/item/robot_module/deathsquad
-	name = "Centcom"
+	name = "CentCom"
 	basic_modules = list(
 		/obj/item/assembly/flash/cyborg,
 		/obj/item/restraints/handcuffs/cable/zipties,
@@ -382,7 +400,7 @@
 	emag_modules = list(/obj/item/gun/energy/laser/cyborg)
 	ratvar_modules = list(
 		/obj/item/clock_module/abscond,
-		/obj/item/twohanded/clockwork/brass_spear,
+		/obj/item/clockwork/weapon/brass_spear,
 		/obj/item/clock_module/ocular_warden,
 		/obj/item/clock_module/vanguard)
 	cyborg_base_icon = "sec"
@@ -404,7 +422,7 @@
 			T.cell.give(S.e_cost * coeff)
 			T.update_icon()
 		else
-			T.charge_tick = 0
+			T.charge_timer = 0
 
 /obj/item/robot_module/peacekeeper
 	name = "Peacekeeper"
@@ -436,7 +454,7 @@
 	You are not a security module and you are expected to follow orders and prevent harm above all else. Space law means nothing to you.</span>")
 
 /obj/item/robot_module/janitor
-	name = "Janitor"
+	name = JOB_NAME_JANITOR
 	basic_modules = list(
 		/obj/item/assembly/flash/cyborg,
 		/obj/item/screwdriver/cyborg,
@@ -452,8 +470,12 @@
 		/obj/item/paint/paint_remover,
 		/obj/item/lightreplacer/cyborg,
 		/obj/item/holosign_creator/janibarrier,
-		/obj/item/reagent_containers/spray/cyborg_drying)
-	emag_modules = list(/obj/item/reagent_containers/spray/cyborg_lube)
+		/obj/item/reagent_containers/spray/cyborg/drying_agent,
+		/obj/item/reagent_containers/spray/cyborg/plantbgone,
+		/obj/item/wirebrush)
+	emag_modules = list(
+		/obj/item/reagent_containers/spray/cyborg/lube,
+		/obj/item/reagent_containers/spray/cyborg/acid)
 	ratvar_modules = list(
 		/obj/item/clock_module/abscond,
 		/obj/item/clock_module/sigil_submission,
@@ -464,15 +486,6 @@
 	hat_offset = -5
 	clean_on_move = TRUE
 
-/obj/item/reagent_containers/spray/cyborg_drying
-	name = "drying agent spray"
-	color = "#A000A0"
-	list_reagents = list(/datum/reagent/drying_agent = 250)
-
-/obj/item/reagent_containers/spray/cyborg_lube
-	name = "lube spray"
-	list_reagents = list(/datum/reagent/lube = 250)
-
 /obj/item/robot_module/janitor/respawn_consumable(mob/living/silicon/robot/R, coeff = 1)
 	..()
 	var/obj/item/lightreplacer/LR = locate(/obj/item/lightreplacer) in basic_modules
@@ -480,16 +493,8 @@
 		for(var/i in 1 to coeff)
 			LR.Charge(R)
 
-	var/obj/item/reagent_containers/spray/cyborg_drying/CD = locate(/obj/item/reagent_containers/spray/cyborg_drying) in basic_modules
-	if(CD)
-		CD.reagents.add_reagent(/datum/reagent/drying_agent, 5 * coeff)
-
-	var/obj/item/reagent_containers/spray/cyborg_lube/CL = locate(/obj/item/reagent_containers/spray/cyborg_lube) in emag_modules
-	if(CL)
-		CL.reagents.add_reagent(/datum/reagent/lube, 2 * coeff)
-
 /obj/item/robot_module/clown
-	name = "Clown"
+	name = JOB_NAME_CLOWN
 	basic_modules = list(
 		/obj/item/assembly/flash/cyborg,
 		/obj/item/toy/crayon/rainbow,
@@ -515,7 +520,7 @@
 	ratvar_modules = list(
 		/obj/item/clock_module/abscond,
 		/obj/item/clock_module/vanguard,
-		/obj/item/twohanded/clockwork/brass_battlehammer)	//honk
+		/obj/item/clockwork/weapon/brass_battlehammer)	//honk
 	moduleselect_icon = "service"
 	cyborg_base_icon = "clown"
 	hat_offset = -2
@@ -525,20 +530,18 @@
 	basic_modules = list(
 		/obj/item/assembly/flash/cyborg,
 		/obj/item/reagent_containers/food/drinks/drinkingglass,
-		/obj/item/reagent_containers/food/condiment/enzyme,
 		/obj/item/pen,
 		/obj/item/toy/crayon/spraycan/borg,
 		/obj/item/extinguisher/mini,
 		/obj/item/hand_labeler/borg,
-		/obj/item/borg/charger,
 		/obj/item/razor,
+		/obj/item/borg/charger,
 		/obj/item/rsf,
+		/obj/item/cookiesynth,
 		/obj/item/instrument/piano_synth,
 		/obj/item/reagent_containers/dropper,
 		/obj/item/lighter,
-		/obj/item/storage/bag/tray,
-		/obj/item/borg/apparatus/beaker,
-		/obj/item/cookiesynth,
+		/obj/item/borg/apparatus/beaker/service,
 		/obj/item/reagent_containers/borghypo/borgshaker)
 	emag_modules = list(/obj/item/reagent_containers/borghypo/borgshaker/hacked)
 	ratvar_modules = list(
@@ -549,6 +552,7 @@
 		/obj/item/clock_module/sentinels_compromise,
 		/obj/item/clockwork/replica_fabricator)
 	moduleselect_icon = "service"
+	cyborg_base_icon = "service_m" // display as butlerborg for radial model selection
 	special_light_key = "service"
 	hat_offset = 0
 
@@ -559,11 +563,16 @@
 		O.reagents.add_reagent(/datum/reagent/consumable/enzyme, 2 * coeff)
 
 /obj/item/robot_module/butler/be_transformed_to(obj/item/robot_module/old_module)
-	var/mob/living/silicon/robot/R = loc
-	var/borg_icon = input(R, "Select an icon!", "Robot Icon", null) as null|anything in sortList(list("Waitress", "Butler", "Tophat", "Kent", "Bro"))
-	if(!borg_icon)
-		return FALSE
-	switch(borg_icon)
+	var/mob/living/silicon/robot/cyborg = loc
+	var/list/service_icons = list(
+		"Waitress" = image(icon = 'icons/mob/robots.dmi', icon_state = "service_f"),
+		"Butler" = image(icon = 'icons/mob/robots.dmi', icon_state = "service_m"),
+		"Bro" = image(icon = 'icons/mob/robots.dmi', icon_state = "brobot"),
+		"Kent" = image(icon = 'icons/mob/robots.dmi', icon_state = "kent"),
+		"Tophat" = image(icon = 'icons/mob/robots.dmi', icon_state = "tophat")
+	)
+	var/service_robot_icon = show_radial_menu(cyborg, cyborg, service_icons, custom_check = CALLBACK(src, .proc/check_menu, cyborg, old_module), radius = 42, require_near = TRUE)
+	switch(service_robot_icon)
 		if("Waitress")
 			cyborg_base_icon = "service_f"
 		if("Butler")
@@ -577,7 +586,9 @@
 		if("Tophat")
 			cyborg_base_icon = "tophat"
 			special_light_key = null
-			hat_offset = INFINITY //He is already wearing a hat
+			hat_offset = INFINITY //He's already wearing a hat
+		else
+			return FALSE
 	return ..()
 
 /obj/item/robot_module/borgi
@@ -617,11 +628,14 @@
 	var/obj/item/t_scanner/adv_mining_scanner/cyborg/mining_scanner //built in memes.
 
 /obj/item/robot_module/miner/be_transformed_to(obj/item/robot_module/old_module)
-	var/mob/living/silicon/robot/R = loc
-	var/borg_icon = input(R, "Select an icon!", "Robot Icon", null) as null|anything in sortList(list("Lavaland Miner", "Asteroid Miner", "Spider Miner"))
-	if(!borg_icon)
-		return FALSE
-	switch(borg_icon)
+	var/mob/living/silicon/robot/cyborg = loc
+	var/list/miner_icons = list(
+		"Lavaland Miner" = image(icon = 'icons/mob/robots.dmi', icon_state = "miner"),
+		"Asteroid Miner" = image(icon = 'icons/mob/robots.dmi', icon_state = "minerOLD"),
+		"Spider Miner" = image(icon = 'icons/mob/robots.dmi', icon_state = "spidermin")
+	)
+	var/miner_robot_icon = show_radial_menu(cyborg, cyborg, miner_icons, custom_check = CALLBACK(src, .proc/check_menu, cyborg, old_module), radius = 42, require_near = TRUE)
+	switch(miner_robot_icon)
 		if("Lavaland Miner")
 			cyborg_base_icon = "miner"
 		if("Asteroid Miner")
@@ -629,6 +643,8 @@
 			special_light_key = "miner"
 		if("Spider Miner")
 			cyborg_base_icon = "spidermin"
+		else
+			return FALSE
 	return ..()
 
 /obj/item/robot_module/miner/rebuild_modules()
@@ -672,7 +688,7 @@
 	basic_modules = list(
 		/obj/item/assembly/flash/cyborg,
 		/obj/item/reagent_containers/borghypo/syndicate,
-		/obj/item/twohanded/shockpaddles/syndicate,
+		/obj/item/shockpaddles/syndicate/cyborg,
 		/obj/item/healthanalyzer,
 		/obj/item/surgical_drapes,
 		/obj/item/borg/charger,
@@ -716,8 +732,8 @@
 		/obj/item/stack/sheet/rglass/cyborg,
 		/obj/item/stack/rods/cyborg,
 		/obj/item/stack/tile/plasteel/cyborg,
-		/obj/item/destTagger/borg,
-		/obj/item/stack/cable_coil,
+		/obj/item/dest_tagger/borg,
+		/obj/item/stack/cable_coil/cyborg,
 		/obj/item/card/emag,
 		/obj/item/pinpointer/syndicate_cyborg,
 		/obj/item/borg_chameleon,

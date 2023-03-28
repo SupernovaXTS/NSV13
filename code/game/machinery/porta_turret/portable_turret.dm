@@ -13,10 +13,12 @@
 	density = TRUE
 	desc = "A covered turret that shoots at its enemies."
 	use_power = IDLE_POWER_USE				//this turret uses and requires power
-	idle_power_usage = 50		//when inactive, this turret takes up constant 50 Equipment power
-	active_power_usage = 300	//when active, this turret takes up constant 300 Equipment power
-	req_access = list(ACCESS_SEC_DOORS)
+	idle_power_usage = 100		//when inactive, this turret takes up constant 50 Equipment power
+	active_power_usage = 600	//when active, this turret takes up constant 300 Equipment power
+	req_access = list(ACCESS_SECURITY)
 	power_channel = AREA_USAGE_EQUIP	//drains power from the EQUIPMENT channel
+
+	var/uses_stored = TRUE	//if TRUE this will cause the turret to stop working if the stored_gun var is null in process()
 
 	var/base_icon_state = "standard"
 	var/scan_range = 7
@@ -27,7 +29,7 @@
 
 	max_integrity = 160		//the turret's health
 	integrity_failure = 80
-	armor = list("melee" = 50, "bullet" = 30, "laser" = 30, "energy" = 30, "bomb" = 30, "bio" = 0, "rad" = 0, "fire" = 90, "acid" = 90)
+	armor = list("melee" = 50, "bullet" = 30, "laser" = 30, "energy" = 30, "bomb" = 30, "bio" = 0, "rad" = 0, "fire" = 90, "acid" = 90, "stamina" = 0)
 
 	var/locked = TRUE			//if the turret's behaviour control access is locked
 	var/controllock = FALSE		//if the turret responds to control panels
@@ -59,6 +61,7 @@
 	var/stun_all = 0		//if this is active, the turret shoots everything that isn't security or head of staff
 	var/check_anomalies = 1	//checks if it can shoot at unidentified lifeforms (ie xenos)
 	var/shoot_unloyal = 0	//checks if it can shoot people that aren't loyalty implantd
+	var/target_cyborgs = 0	//checks if it can shoot cyborgs regardless of faction
 
 	var/attacked = 0		//if set to 1, the turret gets pissed off and shoots at people nearby (unless they have sec access!)
 
@@ -77,7 +80,7 @@
 	var/datum/action/turret_toggle/toggle_action
 	var/mob/remote_controller
 
-/obj/machinery/porta_turret/Initialize()
+/obj/machinery/porta_turret/Initialize(mapload)
 	. = ..()
 	if(!base)
 		base = src
@@ -97,12 +100,31 @@
 	if(!has_cover)
 		INVOKE_ASYNC(src, .proc/popUp)
 
+/obj/machinery/porta_turret/proc/toggle_on(var/set_to)
+	var/current = on
+	if (!isnull(set_to))
+		on = set_to
+	else
+		on = !on
+	if (current != on)
+		check_should_process()
+		if (!on && !always_up)
+			popDown()
+
+/obj/machinery/porta_turret/proc/check_should_process()
+	if (datum_flags & DF_ISPROCESSING)
+		if (!on || !anchored || (machine_stat & BROKEN) || !powered())
+			end_processing()
+	else
+		if (on && anchored && !(machine_stat & BROKEN) && powered())
+			begin_processing()
+
 /obj/machinery/porta_turret/update_icon()
 	cut_overlays()
 	if(!anchored)
 		icon_state = "turretCover"
 		return
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		icon_state = "[base_icon_state]_broken"
 	else
 		if(powered())
@@ -126,8 +148,10 @@
 	if(installation && !turret_gun)
 		stored_gun = new installation(src)
 	else if (turret_gun)
+		turret_gun.forceMove(src)
 		stored_gun = turret_gun
 
+	RegisterSignal(stored_gun, COMSIG_PARENT_PREQDELETED, .proc/null_gun)
 	var/list/gun_properties = stored_gun.get_turret_properties()
 
 	//required properties
@@ -146,6 +170,12 @@
 	update_icon()
 	return gun_properties
 
+///destroys reference to stored_gun to prevent hard deletions
+/obj/machinery/porta_turret/proc/null_gun()
+	SIGNAL_HANDLER
+
+	stored_gun = null
+
 /obj/machinery/porta_turret/Destroy()
 	//deletes its own cover with it
 	QDEL_NULL(cover)
@@ -158,7 +188,11 @@
 	remove_control()
 	return ..()
 
-/obj/machinery/porta_turret/ui_interact(mob/user)
+
+/obj/machinery/porta_turret/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/porta_turret/ui_interact(mob/user, datum/tgui/ui)
 	. = ..()
 	var/dat
 	dat += "Status: <a href='?src=[REF(src)];power=1'>[on ? "On" : "Off"]</a><br>"
@@ -171,6 +205,7 @@
 		dat += "Neutralize All Non-Security and Non-Command Personnel: <A href='?src=[REF(src)];operation=shootall'>[stun_all ? "Yes" : "No"]</A><BR>"
 		dat += "Neutralize All Unidentified Life Signs: <A href='?src=[REF(src)];operation=checkxenos'>[check_anomalies ? "Yes" : "No"]</A><BR>"
 		dat += "Neutralize All Non-Loyalty Implanted Personnel: <A href='?src=[REF(src)];operation=checkloyal'>[shoot_unloyal ? "Yes" : "No"]</A><BR>"
+		dat += "Neutralize All Cyborgs: <A href='?src=[REF(src)];operation=checkborg'>[target_cyborgs ? "Yes" : "No"]</A><BR>"
 	if(issilicon(user))
 		if(!manual_control)
 			var/mob/living/silicon/S = user
@@ -212,32 +247,23 @@
 				check_anomalies = !check_anomalies
 			if("checkloyal")
 				shoot_unloyal = !shoot_unloyal
+			if("checkborg")
+				target_cyborgs = !target_cyborgs
 			if("manual")
 				if(issilicon(usr) && !manual_control)
 					give_control(usr)
 		interact(usr)
 
 /obj/machinery/porta_turret/power_change()
-	if(!anchored)
+	. = ..()
+	if(!anchored || (machine_stat & BROKEN) || !powered())
 		update_icon()
 		remove_control()
-		return
-	if(stat & BROKEN)
-		update_icon()
-		remove_control()
-	else
-		if( powered() )
-			stat &= ~NOPOWER
-			update_icon()
-		else
-			spawn(rand(0, 15))
-				stat |= NOPOWER
-				remove_control()
-				update_icon()
+	check_should_process()
 
 
 /obj/machinery/porta_turret/attackby(obj/item/I, mob/user, params)
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		if(I.tool_behaviour == TOOL_CROWBAR)
 			//If the turret is destroyed, you can remove it with a crowbar to
 			//try and salvage its components
@@ -298,10 +324,10 @@
 	visible_message("[src] hums oddly...")
 	obj_flags |= EMAGGED
 	controllock = TRUE
-	on = FALSE //turns off the turret temporarily
+	toggle_on(FALSE) //turns off the turret temporarily
 	update_icon()
 	sleep(60) //6 seconds for the traitor to gtfo of the area before the turret decides to ruin his shit
-	on = TRUE //turns it back on. The cover popUp() popDown() are automatically called in process(), no need to define it here
+	toggle_on(TRUE) //turns it back on. The cover popUp() popDown() are automatically called in process(), no need to define it here
 
 
 /obj/machinery/porta_turret/emp_act(severity)
@@ -316,10 +342,10 @@
 		auth_weapons = pick(0, 1)
 		stun_all = pick(0, 0, 0, 0, 1)	//stun_all is a pretty big deal, so it's least likely to get turned on
 
-		on = FALSE
+		toggle_on(FALSE)
 		remove_control()
 
-		addtimer(VARSET_CALLBACK(src, on, TRUE), rand(60,600))
+		addtimer(CALLBACK(src, .proc/toggle_on, TRUE), rand(60,600))
 
 /obj/machinery/porta_turret/take_damage(damage, damage_type = BRUTE, damage_flag = 0, sound_effect = 1)
 	. = ..()
@@ -337,105 +363,117 @@
 	qdel(src)
 
 /obj/machinery/porta_turret/obj_break(damage_flag)
-	if(!(flags_1 & NODECONSTRUCT_1) && !(stat & BROKEN))
-		stat |= BROKEN	//enables the BROKEN bit
+	. = ..()
+	if(.)
 		power_change()
 		invisibility = 0
-		spark_system.start()	//creates some sparks because they look cool
-		qdel(cover)	//deletes the cover - no need on keeping it there!
-
-
+		spark_system.start() //creates some sparks because they look cool
+		qdel(cover) //deletes the cover - no need on keeping it there!
 
 /obj/machinery/porta_turret/process()
 	//the main machinery process
 	if(cover == null && anchored)	//if it has no cover and is anchored
-		if(stat & BROKEN)	//if the turret is borked
+		if(machine_stat & BROKEN)	//if the turret is borked
 			qdel(cover)	//delete its cover, assuming it has one. Workaround for a pesky little bug
 		else
 			if(has_cover)
 				cover = new /obj/machinery/porta_turret_cover(loc)	//if the turret has no cover and is anchored, give it a cover
 				cover.parent_turret = src	//assign the cover its parent_turret, which would be this (src)
 
-	if(!on || (stat & (NOPOWER|BROKEN)) || manual_control)
-		return
+	if(!on || (machine_stat & (NOPOWER|BROKEN)))
+		return PROCESS_KILL
+	if(manual_control)
+		return PROCESS_KILL
+	if(uses_stored && !stored_gun)
+		return PROCESS_KILL
+
+	//Turrets can shoot up, but not down.
+	var/list/valid_turfs = list()
+	var/turf/temp = get_turf(src)
+	while(temp && (isspaceturf(temp) || temp == get_turf(src)))
+		valid_turfs["[temp.z]"] = temp
+		temp = temp.above()
 
 	var/list/targets = list()
-	for(var/mob/A in view(scan_range, base))
-		if(A.invisibility > SEE_INVISIBLE_LIVING)
-			continue
-
-		if(check_anomalies)//if it's set to check for simple animals
-			if(isanimal(A))
-				var/mob/living/simple_animal/SA = A
-				if(SA.stat || in_faction(SA)) //don't target if dead or in faction
-					continue
-				targets += SA
+	for(var/turf_z as() in valid_turfs)
+		var/turf/T = valid_turfs[turf_z]
+		for(var/mob/A as() in hearers(scan_range, T))
+			if(A.invisibility > SEE_INVISIBLE_LIVING)
 				continue
 
-		if(issilicon(A))
-			var/mob/living/silicon/sillycone = A
-
-			if(ispAI(A))
-				continue
-
-			if(sillycone.stat || in_faction(sillycone))
-				continue
-
-			if(iscyborg(sillycone))
-				var/mob/living/silicon/robot/sillyconerobot = A
-				if(LAZYLEN(faction) && (ROLE_SYNDICATE in faction) && sillyconerobot.emagged == TRUE)
+			if(check_anomalies)//if it's set to check for simple animals
+				if(isanimal(A))
+					var/mob/living/simple_animal/SA = A
+					if(SA.stat || in_faction(SA)) //don't target if dead or in faction
+						continue
+					targets += SA
 					continue
 
-			targets += sillycone
-			continue
+			if(issilicon(A))
+				var/mob/living/silicon/sillycone = A
 
-		if(iscarbon(A))
-			var/mob/living/carbon/C = A
-			//If not emagged, only target carbons that can use items
-			if(mode != TURRET_LETHAL && (C.stat || C.handcuffed || !(C.mobility_flags & MOBILITY_USE)))
-				continue
+				if(ispAI(A))
+					continue
 
-			//If emagged, target all but dead carbons
-			if(mode == TURRET_LETHAL && C.stat == DEAD)
-				continue
+				if(target_cyborgs && sillycone.stat != DEAD && iscyborg(sillycone))
+					targets += sillycone
+					continue
 
-			//if the target is a human and not in our faction, analyze threat level
-			if(ishuman(C) && !in_faction(C))
-				if(assess_perp(C) >= 4)
-					targets += C
+				if(sillycone.stat || in_faction(sillycone))
+					continue
 
-			else if(check_anomalies) //non humans who are not simple animals (xenos etc)
-				if(!in_faction(C))
-					targets += C
-	for(var/A in GLOB.mechas_list)
-		if((get_dist(A, base) < scan_range) && can_see(base, A, scan_range))
-			var/obj/mecha/Mech = A
-			if(Mech.occupant && !in_faction(Mech.occupant)) //If there is a user and they're not in our faction
-				if(assess_perp(Mech.occupant) >= 4)
-					targets += Mech
-	//Nsv13 start
-	for(var/A in GLOB.overmap_objects)
-		var/obj/structure/overmap/target = A
-		if((get_dist(A, base) < scan_range) && can_see(base, A, scan_range) && istype(A, /obj/structure/overmap) && target.z == z)
-			if(target.pilot && !in_faction(target.pilot)) //If there is a user and they're not in our faction
-				if(assess_perp(target.pilot) >= 4)
-					targets += target
-	//Nsv13 end
+				if(iscyborg(sillycone))
+					var/mob/living/silicon/robot/sillyconerobot = A
+					if((ROLE_SYNDICATE in faction) && sillyconerobot.emagged == TRUE)
+						continue
 
-	if(check_anomalies && GLOB.blobs.len && (mode == TURRET_LETHAL))
-		for(var/obj/structure/blob/B in view(scan_range, base))
-			targets += B
+			else if(iscarbon(A))
+				var/mob/living/carbon/C = A
+				//If not emagged, only target carbons that can use items
+				if(mode != TURRET_LETHAL && (C.stat || C.handcuffed || !(C.mobility_flags & MOBILITY_USE)))
+					continue
+
+				//If emagged, target all but dead carbons
+				if(mode == TURRET_LETHAL && C.stat == DEAD)
+					continue
+
+				//if the target is a human and not in our faction, analyze threat level
+				if(ishuman(C) && !in_faction(C))
+					if(assess_perp(C) >= 4)
+						targets += C
+
+				else if(check_anomalies) //non humans who are not simple animals (xenos etc)
+					if(!in_faction(C))
+						targets += C
+		for(var/A in GLOB.mechas_list)
+			if((get_dist(A, T) < scan_range) && can_see(T, A, scan_range))
+				var/obj/mecha/Mech = A
+				if(Mech.occupant && !in_faction(Mech.occupant)) //If there is a user and they're not in our faction
+					if(assess_perp(Mech.occupant) >= 4)
+						targets += Mech
+
+		if(check_anomalies && GLOB.blobs.len && (mode == TURRET_LETHAL))
+			for(var/obj/structure/blob/B in view(scan_range, T))
+				targets += B
+		//Nsv13 start
+		for(var/A in GLOB.overmap_objects) //Has to go through global list due to occuring on a ship's z, not the overmap.
+			var/obj/structure/overmap/target = A
+			if((get_dist(A, base) < scan_range) && can_see(base, A, scan_range) && istype(A, /obj/structure/overmap) && target.z == z)
+				if(target.pilot && !in_faction(target.pilot)) //If there is a user and they're not in our faction
+					if(assess_perp(target.pilot) >= 4)
+						targets += target
+		//Nsv13 end
 
 	if(targets.len)
-		tryToShootAt(targets)
+		tryToShootAt(targets, valid_turfs)
 	else if(!always_up)
 		popDown() // no valid targets, close the cover
 
-/obj/machinery/porta_turret/proc/tryToShootAt(list/atom/movable/targets)
+/obj/machinery/porta_turret/proc/tryToShootAt(list/atom/movable/targets, list/turf/valid_shot_turfs)
 	while(targets.len > 0)
 		var/atom/movable/M = pick(targets)
 		targets -= M
-		if(target(M))
+		if(target(M, valid_shot_turfs["[M.z]"]))
 			return 1
 
 
@@ -444,7 +482,7 @@
 		return
 	if(raising || raised)
 		return
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		return
 	invisibility = 0
 	raising = 1
@@ -460,7 +498,7 @@
 /obj/machinery/porta_turret/proc/popDown()	//pops the turret down
 	if(raising || !raised)
 		return
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		return
 	layer = OBJ_LAYER
 	raising = 1
@@ -475,40 +513,27 @@
 	update_icon()
 
 /obj/machinery/porta_turret/proc/assess_perp(mob/living/carbon/human/perp)
-	var/threatcount = 0	//the integer returned
-
-	if(obj_flags & EMAGGED)
-		return 10	//if emagged, always return 10.
-
+	//if the turret has been attacked or is angry, target all non-sec people
 	if((stun_all || attacked) && !allowed(perp))
-		//if the turret has been attacked or is angry, target all non-sec people
 		if(!allowed(perp))
 			return 10
-
-	if(auth_weapons)	//check for weapon authorization
-		if(isnull(perp.wear_id) || istype(perp.wear_id.GetID(), /obj/item/card/id/syndicate))
-
-			if(allowed(perp)) //if the perp has security access, return 0
-				return 0
-
-			if(perp.is_holding_item_of_type(/obj/item/gun) ||  perp.is_holding_item_of_type(/obj/item/melee/baton))
-				threatcount += 4
-
-			if(istype(perp.belt, /obj/item/gun) || istype(perp.belt, /obj/item/melee/baton))
-				threatcount += 2
-
-	if(check_records)	//if the turret can check the records, check if they are set to *Arrest* on records
-		var/perpname = perp.get_face_name(perp.get_id_name())
-		var/datum/data/record/R = find_record("name", perpname, GLOB.data_core.security)
-		if(!R || (R.fields["criminal"] == "*Arrest*"))
-			threatcount += 4
-
+	//Check for judgement
+	var/judgement = NONE
+	if(obj_flags & EMAGGED)
+		judgement |= JUDGE_EMAGGED
+	if(auth_weapons)
+		judgement |= JUDGE_WEAPONCHECK
+	if(check_records)
+		judgement |= JUDGE_RECORDCHECK
+	. = perp.assess_threat(judgement, weaponcheck=CALLBACK(src, .proc/check_for_weapons))
 	if(shoot_unloyal)
-		if (!HAS_TRAIT(perp, TRAIT_MINDSHIELD) ||  istype(perp.get_item_by_slot(SLOT_HEAD), /obj/item/clothing/head/foilhat))
-			threatcount += 4
+		if (!perp.has_mindshield_hud_icon())
+			. += 4
 
-	return threatcount
-
+/obj/machinery/porta_turret/proc/check_for_weapons(var/obj/item/slot_item)
+	if(slot_item && (slot_item.item_flags & NEEDS_PERMIT))
+		return TRUE
+	return FALSE
 
 /obj/machinery/porta_turret/proc/in_faction(mob/target)
 	for(var/faction1 in faction)
@@ -516,15 +541,15 @@
 			return TRUE
 	return FALSE
 
-/obj/machinery/porta_turret/proc/target(atom/movable/target)
+/obj/machinery/porta_turret/proc/target(atom/movable/target, turf/bullet_source)
 	if(target)
 		popUp()				//pop the turret up if it's not already up.
 		setDir(get_dir(base, target))//even if you can't shoot, follow the target
-		shootAt(target)
+		shootAt(target, bullet_source)
 		return 1
 	return
 
-/obj/machinery/porta_turret/proc/shootAt(atom/movable/target)
+/obj/machinery/porta_turret/proc/shootAt(atom/movable/target, turf/bullet_source)
 	if(!raised) //the turret has to be raised in order to fire - makes sense, right?
 		return
 
@@ -533,7 +558,7 @@
 			return
 		last_fired = world.time
 
-	var/turf/T = get_turf(src)
+	var/turf/T = bullet_source || get_turf(src)
 	var/turf/U = get_turf(target)
 	if(!istype(T) || !istype(U))
 		return
@@ -568,17 +593,16 @@
 	//Shooting Code:
 	A.preparePixelProjectile(target, T)
 	A.firer = src
-	A.fired_from = src
+	A.fired_from = bullet_source
 	A.fire()
 	return A
 
-/obj/machinery/porta_turret/proc/setState(on, mode)
+/obj/machinery/porta_turret/proc/setState(on, mode, shoot_cyborgs)
 	if(controllock)
 		return
-	src.on = on
-	if(!on)
-		popDown()
+	toggle_on(on)
 	src.mode = mode
+	src.target_cyborgs = shoot_cyborgs
 	power_change()
 
 
@@ -591,7 +615,7 @@
 	var/obj/machinery/porta_turret/P = target
 	if(!istype(P))
 		return
-	P.setState(P.on,!P.mode)
+	P.setState(P.on, !P.mode, P.target_cyborgs)
 
 /datum/action/turret_quit
 	name = "Release Control"
@@ -634,6 +658,7 @@
 	always_up = initial(always_up)
 	manual_control = FALSE
 	remote_controller = null
+	check_should_process()
 	return TRUE
 
 /obj/machinery/porta_turret/proc/InterceptClickOn(mob/living/caller, params, atom/A)
@@ -648,11 +673,12 @@
 
 /obj/machinery/porta_turret/syndicate
 	installation = null
-	always_up = 1
+	always_up = TRUE
 	use_power = NO_POWER_USE
-	has_cover = 0
+	has_cover = FALSE
 	scan_range = 9
 	req_access = list(ACCESS_SYNDICATE)
+	uses_stored = FALSE
 	mode = TURRET_LETHAL
 	stun_projectile = /obj/item/projectile/bullet
 	lethal_projectile = /obj/item/projectile/bullet
@@ -716,7 +742,7 @@
 	lethal_projectile = /obj/item/projectile/bullet/p50/penetrator/shuttle
 	lethal_projectile_sound = 'sound/weapons/gunshot_smg.ogg'
 	stun_projectile_sound = 'sound/weapons/gunshot_smg.ogg'
-	armor = list("melee" = 50, "bullet" = 30, "laser" = 30, "energy" = 30, "bomb" = 80, "bio" = 0, "rad" = 0, "fire" = 90, "acid" = 90)
+	armor = list("melee" = 50, "bullet" = 30, "laser" = 30, "energy" = 30, "bomb" = 80, "bio" = 0, "rad" = 0, "fire" = 90, "acid" = 90, "stamina" = 0)
 
 /obj/machinery/porta_turret/syndicate/shuttle/target(atom/movable/target)
 	if(target)
@@ -737,6 +763,8 @@
 	name = "perimeter defense turret"
 	desc = "A plasma beam turret calibrated to defend outposts against non-humanoid fauna. It is more effective when exposed to the environment."
 	installation = null
+	uses_stored = FALSE
+	stun_projectile = /obj/item/projectile/plasma/turret
 	lethal_projectile = /obj/item/projectile/plasma/turret
 	lethal_projectile_sound = 'sound/weapons/plasma_cutter.ogg'
 	mode = TURRET_LETHAL //It would be useless in stun mode anyway
@@ -751,7 +779,7 @@
 /obj/machinery/porta_turret/aux_base/interact(mob/user) //Controlled solely from the base console.
 	return
 
-/obj/machinery/porta_turret/aux_base/Initialize()
+/obj/machinery/porta_turret/aux_base/Initialize(mapload)
 	. = ..()
 	cover.name = name
 	cover.desc = desc
@@ -759,7 +787,7 @@
 /obj/machinery/porta_turret/centcom_shuttle
 	installation = null
 	max_integrity = 260
-	always_up = 1
+	always_up = TRUE
 	use_power = NO_POWER_USE
 	has_cover = 0
 	scan_range = 9
@@ -803,8 +831,8 @@
 	density = FALSE
 	req_access = list(ACCESS_AI_UPLOAD)
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
-	ui_x = 305
-	ui_y = 172
+
+
 	/// Variable dictating if linked turrets are active and will shoot targets
 	var/enabled = TRUE
 	/// Variable dictating if linked turrets will shoot lethal projectiles
@@ -813,7 +841,7 @@
 	var/locked = TRUE
 	 /// An area in which linked turrets are located, it can be an area name, path or nothing
 	var/control_area = null
-	 /// AI is unable to use this machine if set to TRUE
+	 /// Silicons are unable to use this machine if set to TRUE
 	var/ailock = FALSE
 	/// Variable dictating if linked turrets will shoot cyborgs
 	var/shoot_cyborgs = FALSE
@@ -852,12 +880,12 @@
 
 /obj/machinery/turretid/examine(mob/user)
 	. += ..()
-	if(issilicon(user) && (!stat & BROKEN))
-		. += {"<span class='notice'>Ctrl-click [src] to [ enabled ? "disable" : "enable"] turrets.</span>
-					<span class='notice'>Alt-click [src] to set turrets to [ lethal ? "stun" : "kill"].</span>"}
+	if(issilicon(user) && !(machine_stat & BROKEN))
+		. += "<span class='notice'>Ctrl-click [src] to [ enabled ? "disable" : "enable"] turrets.</span>\n"+\
+				"<span class='notice'>Alt-click [src] to set turrets to [ lethal ? "stun" : "kill"].</span>"
 
 /obj/machinery/turretid/attackby(obj/item/I, mob/user, params)
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		return
 
 	if(I.tool_behaviour == TOOL_MULTITOOL)
@@ -890,17 +918,25 @@
 	obj_flags |= EMAGGED
 	locked = FALSE
 
+/obj/machinery/turretid/attack_robot(mob/user)
+	if(!ailock)
+		return attack_hand(user)
+	else
+		to_chat(user, "<span class='notice'>There seems to be a firewall preventing you from accessing this device.</span>")
+
 /obj/machinery/turretid/attack_ai(mob/user)
 	if(!ailock || IsAdminGhost(user))
 		return attack_hand(user)
 	else
 		to_chat(user, "<span class='notice'>There seems to be a firewall preventing you from accessing this device.</span>")
 
-/obj/machinery/turretid/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, \
-									datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+/obj/machinery/turretid/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/turretid/ui_interact(mob/user, datum/tgui/ui = null)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "TurretControl", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "TurretControl")
 		ui.open()
 
 /obj/machinery/turretid/ui_data(mob/user)
@@ -917,11 +953,15 @@
 	if(.)
 		return
 
+	if(!allowed(usr))
+		to_chat(usr, "<span class='warning'>Invalid access.</span>")
+		return
+
 	switch(action)
 		if("lock")
 			if(!usr.has_unlimited_silicon_privilege)
 				return
-			if((obj_flags & EMAGGED) || (stat & BROKEN))
+			if((obj_flags & EMAGGED) || (machine_stat & BROKEN))
 				to_chat(usr, "<span class='warning'>The turret control is unresponsive!</span>")
 				return
 			locked = !locked
@@ -941,22 +981,25 @@
 	add_hiddenprint(user)
 	log_combat(user, src, "[lethal ? "enabled" : "disabled"] lethals on")
 	updateTurrets()
+	ui_update()
 
 /obj/machinery/turretid/proc/toggle_on(mob/user)
 	enabled = !enabled
 	add_hiddenprint(user)
 	log_combat(user, src, "[enabled ? "enabled" : "disabled"]")
 	updateTurrets()
+	ui_update()
 
 /obj/machinery/turretid/proc/shoot_silicons(mob/user)
 	shoot_cyborgs = !shoot_cyborgs
 	add_hiddenprint(user)
 	log_combat(user, src, "[shoot_cyborgs ? "Shooting Borgs" : "Not Shooting Borgs"]")
 	updateTurrets()
+	ui_update()
 
 /obj/machinery/turretid/proc/updateTurrets()
 	for (var/obj/machinery/porta_turret/aTurret in turrets)
-		aTurret.setState(enabled, lethal)
+		aTurret.setState(enabled, lethal, shoot_cyborgs)
 	update_icon()
 
 /obj/machinery/turretid/power_change()
@@ -965,7 +1008,7 @@
 
 /obj/machinery/turretid/update_icon()
 	..()
-	if(stat & NOPOWER)
+	if(machine_stat & NOPOWER)
 		icon_state = "control_off"
 	else if (enabled)
 		if (lethal)
@@ -1100,9 +1143,9 @@
 	if(on)
 		if(team_color == "blue")
 			if(istype(P, /obj/item/projectile/beam/lasertag/redtag))
-				on = FALSE
-				addtimer(VARSET_CALLBACK(src, on, TRUE), 10 SECONDS)
+				toggle_on(FALSE)
+				addtimer(CALLBACK(src, .proc/toggle_on, TRUE), 10 SECONDS)
 		else if(team_color == "red")
 			if(istype(P, /obj/item/projectile/beam/lasertag/bluetag))
-				on = FALSE
-				addtimer(VARSET_CALLBACK(src, on, TRUE), 10 SECONDS)
+				toggle_on(FALSE)
+				addtimer(CALLBACK(src, .proc/toggle_on, TRUE), 10 SECONDS)

@@ -4,6 +4,7 @@
 	//- floor_tile is now a path, and not a tile obj
 	name = "floor"
 	icon = 'icons/turf/floors.dmi'
+	var/base_icon_state = "floor"
 	baseturfs = /turf/open/floor/plating
 
 	footstep = FOOTSTEP_FLOOR
@@ -11,18 +12,18 @@
 	clawfootstep = FOOTSTEP_HARD_CLAW
 	heavyfootstep = FOOTSTEP_GENERIC_HEAVY
 
-	var/icon_regular_floor = "floor" //used to remember what icon the tile should have by default
-	var/icon_plating = "plating"
-	thermal_conductivity = 0.040
+	thermal_conductivity = 0.04
 	heat_capacity = 10000
 	intact = 1
+	tiled_dirt = TRUE
+
+	var/icon_plating = "plating"
 	var/broken = 0
 	var/burnt = 0
 	var/floor_tile = null //tile that this floor drops
 	var/list/broken_states
 	var/list/burnt_states
 
-	tiled_dirt = TRUE
 
 /turf/open/floor/Initialize(mapload)
 
@@ -36,26 +37,15 @@
 	if(!burnt && burnt_states && (icon_state in burnt_states))
 		burnt = TRUE
 	. = ..()
-	//This is so damaged or burnt tiles or platings don't get remembered as the default tile
-	var/static/list/icons_to_ignore_at_floor_init = list("foam_plating", "plating","light_on","light_on_flicker1","light_on_flicker2",
-					"light_on_clicker3","light_on_clicker4","light_on_clicker5",
-					"light_on_broken","light_off","wall_thermite","grass", "sand",
-					"asteroid","asteroid_dug",
-					"asteroid0","asteroid1","asteroid2","asteroid3","asteroid4",
-					"asteroid5","asteroid6","asteroid7","asteroid8","asteroid9","asteroid10","asteroid11","asteroid12",
-					"basalt","basalt_dug",
-					"basalt0","basalt1","basalt2","basalt3","basalt4",
-					"basalt5","basalt6","basalt7","basalt8","basalt9","basalt10","basalt11","basalt12",
-					"oldburning","light-on-r","light-on-y","light-on-g","light-on-b", "wood", "carpetsymbol", "carpetstar",
-					"carpetcorner", "carpetside", "carpet", "ironsand1", "ironsand2", "ironsand3", "ironsand4", "ironsand5",
-					"ironsand6", "ironsand7", "ironsand8", "ironsand9", "ironsand10", "ironsand11",
-					"ironsand12", "ironsand13", "ironsand14", "ironsand15")
-	if(broken || burnt || (icon_state in icons_to_ignore_at_floor_init)) //so damaged/burned tiles or plating icons aren't saved as the default
-		icon_regular_floor = "floor"
-	else
-		icon_regular_floor = icon_state
 	if(mapload && prob(33))
 		MakeDirty()
+	if(is_station_level(z))
+		GLOB.station_turfs += src
+
+/turf/open/floor/Destroy()
+	if(is_station_level(z))
+		GLOB.station_turfs -= src
+	return ..()
 
 /turf/open/floor/ex_act(severity, target)
 	var/shielded = is_shielded()
@@ -143,10 +133,8 @@
 		return ..() //fucking turfs switch the fucking src of the fucking running procs
 	if(!ispath(path, /turf/open/floor))
 		return ..()
-	var/old_icon = icon_regular_floor
 	var/old_dir = dir
 	var/turf/open/floor/W = ..()
-	W.icon_regular_floor = old_icon
 	W.setDir(old_dir)
 	W.update_icon()
 	return W
@@ -166,7 +154,7 @@
 /turf/open/floor/proc/try_replace_tile(obj/item/stack/tile/T, mob/user, params)
 	if(T.turf_type == type)
 		return
-	var/obj/item/crowbar/CB = user.is_holding_item_of_type(/obj/item/crowbar)
+	var/obj/item/CB = user.is_holding_tool_quality(TOOL_CROWBAR)
 	if(!CB)
 		return
 	var/turf/open/floor/plating/P = pry_tile(CB, user, TRUE)
@@ -261,18 +249,19 @@
 				return FALSE
 			to_chat(user, "<span class='notice'>You build an airlock.</span>")
 			var/obj/machinery/door/airlock/A = new the_rcd.airlock_type(src)
-
-			A.electronics = new/obj/item/electronics/airlock(A)
-
-			if(the_rcd.conf_access)
-				A.electronics.accesses = the_rcd.conf_access.Copy()
-			A.electronics.one_access = the_rcd.use_one_access
-
+			A.electronics = new /obj/item/electronics/airlock(A)
+			if(the_rcd.airlock_electronics)
+				A.electronics.accesses = the_rcd.airlock_electronics.accesses.Copy()
+				A.electronics.one_access = the_rcd.airlock_electronics.one_access
+				A.electronics.unres_sides = the_rcd.airlock_electronics.unres_sides
 			if(A.electronics.one_access)
 				A.req_one_access = A.electronics.accesses
 			else
 				A.req_access = A.electronics.accesses
+			if(A.electronics.unres_sides)
+				A.unres_sides = A.electronics.unres_sides
 			A.autoclose = TRUE
+			A.update_icon()
 			return TRUE
 		if(RCD_DECONSTRUCT)
 			if(ScrapeAway(flags = CHANGETURF_INHERIT_AIR) == src)

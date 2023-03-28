@@ -25,7 +25,7 @@
 	id="pushbroom"
 	build_type = AUTOLATHE | PROTOLATHE
 	materials = list(/datum/material/iron = 2000)
-	build_path = /obj/item/twohanded/pushbroom
+	build_path = /obj/item/pushbroom
 	category = list("initial","Tools","Tool Designs")
 	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
 
@@ -157,7 +157,7 @@
 	materials = list(/datum/material/iron = 10, /datum/material/glass = 5)
 	build_path = /obj/item/stack/cable_coil
 	category = list("initial","Tools","Tool Designs")
-	maxstack = 30
+	maxstack = MAXCOIL
 	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
 
 /datum/design/toolbox
@@ -263,6 +263,15 @@
 	build_path = /obj/item/airlock_painter
 	category = list("initial","Tools","Tool Designs")
 	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
+
+/datum/design/airlock_painter/decal/tile
+	name = "Tile Sprayer"
+	id = "tile_sprayer"
+	build_type = AUTOLATHE | PROTOLATHE
+	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
+	build_path = /obj/item/airlock_painter/decal/tile
+	category = list("initial","Tools","Tool Designs")
+	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SERVICE
 
 /datum/design/emergency_oxygen
 	name = "Emergency Oxygen Tank"
@@ -452,6 +461,15 @@
 	build_path = /obj/item/clothing/head/foilhat
 	category = list("hacked", "Misc")
 
+/datum/design/blood_filter
+	name = "Blood Filter"
+	id = "blood_filter"
+	build_type = PROTOLATHE
+	materials = list(/datum/material/iron = 4000, /datum/material/glass = 1500, /datum/material/silver = 500)
+	build_path = /obj/item/blood_filter
+	category = list("initial", "Medical", "Tool Designs")
+	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+
 /datum/design/scalpel
 	name = "Scalpel"
 	id = "scalpel"
@@ -558,12 +576,12 @@
 	build_path = /obj/item/ammo_casing/shotgun/rubbershot
 	category = list("initial", "Security")
 
-/datum/design/c38
-	name = "Speed Loader (.38)"
-	id = "c38"
+/datum/design/c38b
+	name = "Speed Loader (.38 Rubber)"
+	id = "c38b"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 20000)
-	build_path = /obj/item/ammo_box/c38
+	materials = list(/datum/material/iron = 16000)
+	build_path = /obj/item/ammo_box/c38/match/bouncy
 	category = list("initial", "Security")
 
 /datum/design/recorder
@@ -841,6 +859,14 @@
 	build_path = /obj/item/ammo_box/c9mm
 	category = list("hacked", "Security")
 
+/datum/design/c38
+	name = "Speed Loader (.38)"
+	id = "c38"
+	build_type = AUTOLATHE
+	materials = list(/datum/material/iron = 20000)
+	build_path = /obj/item/ammo_box/c38
+	category = list("hacked", "Security")
+
 /datum/design/cleaver
 	name = "Butcher's Cleaver"
 	id = "cleaver"
@@ -857,12 +883,12 @@
 	build_path = /obj/item/toy/crayon/spraycan
 	category = list("initial", "Tools")
 
-/datum/design/desttagger
+/datum/design/dest_tagger
 	name = "Destination Tagger"
-	id = "desttagger"
+	id = "dest_tagger"
 	build_type = AUTOLATHE | PROTOLATHE
 	materials = list(/datum/material/iron = 250, /datum/material/glass = 125)
-	build_path = /obj/item/destTagger
+	build_path = /obj/item/dest_tagger
 	category = list("initial", "Electronics")
 
 /datum/design/handlabeler
@@ -946,12 +972,12 @@
 	build_path = /obj/item/stock_parts/cell/emergency_light
 	category = list("initial", "Electronics")
 
-/datum/design/packageWrap
+/datum/design/package_wrap
 	name = "Package Wrapping"
-	id = "packagewrap"
+	id = "package_wrap"
 	build_type = AUTOLATHE | PROTOLATHE
 	materials = list(/datum/material/iron = 200, /datum/material/glass = 200)
-	build_path = /obj/item/stack/packageWrap
+	build_path = /obj/item/stack/package_wrap
 	category = list("initial", "Misc", "Equipment")
 	maxstack = 30
 
@@ -1030,3 +1056,19 @@
 	build_path = /obj/item/stack/ducts
 	category = list("initial", "Construction")
 	maxstack = 50
+
+/datum/design/airlock_painter/decal
+	name = "Decal Painter"
+	id = "decal_painter"
+	build_type = AUTOLATHE | PROTOLATHE
+	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
+	build_path = /obj/item/airlock_painter/decal
+	category = list("initial","Tools","Tool Designs")
+
+/datum/design/cautionsign
+	name = "Wet Floor Sign"
+	id = "wetfloorsign"
+	build_type = AUTOLATHE
+	materials = list(/datum/material/iron = 50)
+	build_path = /obj/item/clothing/suit/caution
+	category = list("initial","Misc")

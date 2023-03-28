@@ -27,22 +27,40 @@
 	var/list/comp_lookup
 	/// List of callbacks for signal procs
 	var/list/list/datum/callback/signal_procs
-	/// Is this datum capable of sending signals?
-	var/signal_enabled = FALSE
 	/// Datum level flags
 	var/datum_flags = NONE
 
 	/// A weak reference to another datum
 	var/datum/weakref/weak_reference
 
-#ifdef TESTING
+	/*
+	* Lazy associative list of currently active cooldowns.
+	*
+	* cooldowns [ COOLDOWN_INDEX ] = add_timer()
+	* add_timer() returns the truthy value of -1 when not stoppable, and else a truthy numeric index
+	*/
+	var/list/cooldowns
+
+#ifdef REFERENCE_TRACKING
 	var/running_find_references
 	var/last_find_references = 0
+	#ifdef REFERENCE_TRACKING_DEBUG
+	///Stores info about where refs are found, used for sanity checks and testing
+	var/list/found_refs
+	#endif
 #endif
 
 #ifdef DATUMVAR_DEBUGGING_MODE
 	var/list/cached_vars
 #endif
+
+/**
+  * Topic signals
+  */
+
+/datum/Topic(href, href_list[])
+	..()
+	SEND_SIGNAL(src, COMSIG_TOPIC, usr, href_list)
 
 /**
   * Default implementation of clean-up code.
@@ -61,21 +79,26 @@
   * Returns QDEL_HINT_QUEUE
   */
 /datum/proc/Destroy(force=FALSE, ...)
+	SHOULD_CALL_PARENT(TRUE)
 	tag = null
 	datum_flags &= ~DF_USE_TAG //In case something tries to REF us
 	weak_reference = null	//ensure prompt GCing of weakref.
 
 	var/list/timers = active_timers
 	active_timers = null
-	for(var/thing in timers)
-		var/datum/timedevent/timer = thing
-		if (timer.spent)
+  
+	for(var/datum/timedevent/timer as anything in timers)
+		if (timer?.spent && !(timer.flags & TIMER_DELETE_ME))
 			continue
 		qdel(timer)
 
-	//BEGIN: ECS SHIT
-	signal_enabled = FALSE
+	#ifdef REFERENCE_TRACKING
+	#ifdef REFERENCE_TRACKING_DEBUG
+	found_refs = null
+	#endif
+	#endif
 
+	//BEGIN: ECS SHIT
 	var/list/dc = datum_components
 	if(dc)
 		var/all_components = dc[/datum/component]
@@ -88,6 +111,14 @@
 			qdel(C, FALSE, TRUE)
 		dc.Cut()
 
+	clear_signal_refs()
+	//END: ECS SHIT
+
+	return QDEL_HINT_QUEUE
+
+///Only override this if you know what you're doing. You do not know what you're doing
+///This is a threat
+/datum/proc/clear_signal_refs()
 	var/list/lookup = comp_lookup
 	if(lookup)
 		for(var/sig in lookup)
@@ -103,9 +134,6 @@
 
 	for(var/target in signal_procs)
 		UnregisterSignal(target, signal_procs[target])
-	//END: ECS SHIT
-
-	return QDEL_HINT_QUEUE
 
 #ifdef DATUMVAR_DEBUGGING_MODE
 /datum/proc/save_vars()
@@ -197,3 +225,33 @@
 		qdel(D)
 	else
 		return returned
+/**
+  * Callback called by a timer to end an associative-list-indexed cooldown.
+  *
+  * Arguments:
+  * * source - datum storing the cooldown
+  * * index - string index storing the cooldown on the cooldowns associative list
+  *
+  * This sends a signal reporting the cooldown end.
+  */
+/proc/end_cooldown(datum/source, index)
+	if(QDELETED(source))
+		return
+	SEND_SIGNAL(source, COMSIG_CD_STOP(index))
+	TIMER_COOLDOWN_END(source, index)
+
+
+/**
+  * Proc used by stoppable timers to end a cooldown before the time has ran out.
+  *
+  * Arguments:
+  * * source - datum storing the cooldown
+  * * index - string index storing the cooldown on the cooldowns associative list
+  *
+  * This sends a signal reporting the cooldown end, passing the time left as an argument.
+  */
+/proc/reset_cooldown(datum/source, index)
+	if(QDELETED(source))
+		return
+	SEND_SIGNAL(source, COMSIG_CD_RESET(index), S_TIMER_COOLDOWN_TIMELEFT(source, index))
+	TIMER_COOLDOWN_END(source, index)

@@ -20,7 +20,7 @@
     if(!msg)
         return
 
-    if(!(prefs.toggles & CHAT_LOOC)) //nsv13 - CHAT_OOC -> CHAT_LOOC
+    if(!(prefs.chat_toggles & CHAT_LOOC)) //nsv13 - toggles -> chat_toggles, CHAT_OOC -> CHAT_LOOC
         to_chat(src, "<span class='danger'>You have LOOC muted.</span>")
         return
 
@@ -57,10 +57,10 @@
 
     msg = emoji_parse(msg)
 
-    mob.log_talk(raw_msg, LOG_OOC, tag="(LOOC)")
+    mob.log_talk(raw_msg, LOG_OOC, tag="LOOC")
 
-    var/list/heard = get_hearers_in_view(7, get_top_level_mob(src.mob))
-    for(var/mob/M in heard)
+    var/list/heard = hearers(7, get_top_level_mob(src.mob))
+    for(var/mob/M as() in heard)
         if(!M.client)
             continue
         var/client/C = M.client
@@ -70,7 +70,7 @@
         if (isobserver(M))
             continue //Also handled later.
 
-        if(C.prefs.toggles & CHAT_OOC)
+        if(C.prefs.chat_toggles & CHAT_LOOC) //nsv13 - toggles -> chat_toggles, CHAT_OOC -> CHAT_LOOC
 //            var/display_name = src.key
 //            if(holder)
 //                if(holder.fakekey)
@@ -81,24 +81,11 @@
             to_chat(C,"<span class='looc'><span class='prefix'>LOOC:</span> <EM>[src.mob.name]:</EM> <span class='message'>[msg]</span></span>")
 
     for(var/client/C in GLOB.admins)
-        if(C.prefs.toggles & CHAT_OOC)
+        if(C.prefs.chat_toggles & CHAT_LOOC) //nsv13 - toggles -> chat_toggles, CHAT_OOC -> CHAT_LOOC
             var/prefix = "(R)LOOC"
             if (C.mob in heard)
                 prefix = "LOOC"
             to_chat(C,"<span class='looc'>[ADMIN_FLW(usr)]<span class='prefix'>[prefix]:</span> <EM>[src.key]/[src.mob.name]:</EM> <span class='message'>[msg]</span></span>")
-
-    /*for(var/mob/dead/observer/G in world)
-        if(!G.client)
-            continue
-        var/client/C = G.client
-        if (C in GLOB.admins)
-            continue //handled earlier.
-        if(C.prefs.toggles & CHAT_OOC)
-            var/prefix = "(G)LOOC"
-            if (C.mob in heard)
-                prefix = "LOOC"
-        to_chat(C,"<font color='#6699CC'><span class='ooc'><span class='prefix'>[prefix]:</span> <EM>[src.key]/[src.mob.name]:</EM> <span class='message'>[msg]</span></span></font>")*/
-
 
 /proc/toggle_looc(toggle = null) //nsv13 - adds a toggle for looc
     if(toggle != null) //if we're specifically en/disabling looc
@@ -113,13 +100,45 @@
     if (CONFIG_GET(flag/log_ooc))
         WRITE_FILE(GLOB.world_game_log, "\[[time_stamp()]]LOOC: [text]")
 
+////////////////////FLAVOUR TEXT NSV13////////////////////
+/mob
+	var/flavour_text = ""
+
+/mob/proc/update_flavor_text()
+	set src in usr
+
+	if(usr != src)
+		usr << "No."
+	var/msg = sanitize(input(usr,"Set the flavor text in your 'examine' verb. Can also be used for OOC notes about your character.","Flavour Text",html_decode(flavour_text)) as message|null)
+
+	if(msg)
+		msg = copytext(msg, 1, MAX_MESSAGE_LEN)
+		msg = html_encode(msg)
+
+		flavour_text = msg
+
+/mob/proc/warn_flavor_changed()
+	if(flavour_text && flavour_text != "") // don't spam people that don't use it!
+		src << "<h2 class='alert'>OOC Warning:</h2>"
+		src << "<span class='alert'>Your flavor text is likely out of date! <a href='byond://?src=\ref[src];flavor_change=1'>Change</a></span>"
+
+/mob/proc/print_flavor_text()
+	if(flavour_text && flavour_text != "")
+		var/msg = replacetext(flavour_text, "\n", " ")
+		if(length(msg) <= 100)
+			return "<span class='notice'>[msg]</span>"
+		else
+			return "<span class='notice'>[copytext(msg, 1, 97)]... <a href=\"byond://?src=\ref[src];flavor_more=1\">More...</span></a>"
+
+//Needed for LOOC and flavour text
+
 /mob/proc/get_top_level_mob()
     if(istype(src.loc,/mob)&&src.loc!=src)
         var/mob/M=src.loc
         return M.get_top_level_mob()
     return src
 
-proc/get_top_level_mob(var/mob/S)
+/proc/get_top_level_mob(var/mob/S)
     if(istype(S.loc,/mob)&&S.loc!=S)
         var/mob/M=S.loc
         return M.get_top_level_mob()

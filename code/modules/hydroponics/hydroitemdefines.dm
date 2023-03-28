@@ -84,7 +84,7 @@
 	hitsound = 'sound/weapons/bladeslice.ogg'
 	sharpness = IS_SHARP
 
-/obj/item/hatchet/Initialize()
+/obj/item/hatchet/Initialize(mapload)
 	. = ..()
 	AddComponent(/datum/component/butchering, 70, 100)
 
@@ -111,7 +111,7 @@
 	hitsound = 'sound/weapons/bladeslice.ogg'
 	var/swiping = FALSE
 
-/obj/item/scythe/Initialize()
+/obj/item/scythe/Initialize(mapload)
 	. = ..()
 	AddComponent(/datum/component/butchering, 90, 105)
 
@@ -122,7 +122,7 @@
 		var/obj/item/bodypart/BP = C.get_bodypart(BODY_ZONE_HEAD)
 		if(BP)
 			BP.drop_limb()
-			playsound(src,pick('sound/misc/desceration-01.ogg','sound/misc/desceration-02.ogg','sound/misc/desceration-01.ogg') ,50, 1, -1)
+			playsound(src,pick('sound/misc/desecration-01.ogg','sound/misc/desecration-02.ogg','sound/misc/desecration-01.ogg') ,50, 1, -1)
 	return (BRUTELOSS)
 
 /obj/item/scythe/pre_attack(atom/A, mob/living/user, params)
@@ -151,10 +151,10 @@
 	amount_per_transfer_from_this = 10
 	possible_transfer_amounts = list(1,2,5,10,15,25,50)
 
-/obj/item/reagent_containers/glass/bottle/nutrient/Initialize()
+/obj/item/reagent_containers/glass/bottle/nutrient/Initialize(mapload)
 	. = ..()
-	pixel_x = rand(-5, 5)
-	pixel_y = rand(-5, 5)
+	pixel_x = base_pixel_x + rand(-5, 5)
+	pixel_y = base_pixel_y + rand(-5, 5)
 
 
 /obj/item/reagent_containers/glass/bottle/nutrient/ez

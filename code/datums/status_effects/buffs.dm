@@ -3,9 +3,9 @@
 /datum/status_effect/shadow_mend
 	id = "shadow_mend"
 	duration = 30
-	alert_type = /obj/screen/alert/status_effect/shadow_mend
+	alert_type = /atom/movable/screen/alert/status_effect/shadow_mend
 
-/obj/screen/alert/status_effect/shadow_mend
+/atom/movable/screen/alert/status_effect/shadow_mend
 	name = "Shadow Mend"
 	desc = "Shadowy energies wrap around your wounds, sealing them at a price. After healing, you will slowly lose health every three seconds for thirty seconds."
 	icon_state = "shadow_mend"
@@ -29,9 +29,9 @@
 	id = "void_price"
 	duration = 300
 	tick_interval = 30
-	alert_type = /obj/screen/alert/status_effect/void_price
+	alert_type = /atom/movable/screen/alert/status_effect/void_price
 
-/obj/screen/alert/status_effect/void_price
+/atom/movable/screen/alert/status_effect/void_price
 	name = "Void Price"
 	desc = "Black tendrils cinch tightly against you, digging wicked barbs into your flesh."
 	icon_state = "shadow_mend"
@@ -43,7 +43,7 @@
 /datum/status_effect/cyborg_power_regen
 	id = "power_regen"
 	duration = 100
-	alert_type = /obj/screen/alert/status_effect/power_regen
+	alert_type = /atom/movable/screen/alert/status_effect/power_regen
 	var/power_to_give = 0 //how much power is gained each tick
 
 /datum/status_effect/cyborg_power_regen/on_creation(mob/living/new_owner, new_power_per_tick)
@@ -51,7 +51,7 @@
 	if(. && isnum_safe(new_power_per_tick))
 		power_to_give = new_power_per_tick
 
-/obj/screen/alert/status_effect/power_regen
+/atom/movable/screen/alert/status_effect/power_regen
 	name = "Power Regeneration"
 	desc = "You are quickly regenerating power!"
 	icon_state = "power_regen"
@@ -68,16 +68,16 @@
 	id = "his_grace"
 	duration = -1
 	tick_interval = 4
-	alert_type = /obj/screen/alert/status_effect/his_grace
+	alert_type = /atom/movable/screen/alert/status_effect/his_grace
 	var/bloodlust = 0
 
-/obj/screen/alert/status_effect/his_grace
+/atom/movable/screen/alert/status_effect/his_grace
 	name = "His Grace"
 	desc = "His Grace hungers, and you must feed Him."
 	icon_state = "his_grace"
 	alerttooltipstyle = "hisgrace"
 
-/obj/screen/alert/status_effect/his_grace/MouseEntered(location,control,params)
+/atom/movable/screen/alert/status_effect/his_grace/MouseEntered(location,control,params)
 	desc = initial(desc)
 	var/datum/status_effect/his_grace/HG = attached_effect
 	desc += "<br><font size=3><b>Current Bloodthirst: [HG.bloodlust]</b></font>\
@@ -118,7 +118,7 @@
 /datum/status_effect/wish_granters_gift //Fully revives after ten seconds.
 	id = "wish_granters_gift"
 	duration = 50
-	alert_type = /obj/screen/alert/status_effect/wish_granters_gift
+	alert_type = /atom/movable/screen/alert/status_effect/wish_granters_gift
 
 /datum/status_effect/wish_granters_gift/on_apply()
 	to_chat(owner, "<span class='notice'>Death is not your end! The Wish Granter's energy suffuses you, and you begin to rise...</span>")
@@ -129,7 +129,7 @@
 	owner.visible_message("<span class='warning'>[owner] appears to wake from the dead, having healed all wounds!</span>", "<span class='notice'>You have regenerated.</span>")
 	owner.update_mobility()
 
-/obj/screen/alert/status_effect/wish_granters_gift
+/atom/movable/screen/alert/status_effect/wish_granters_gift
 	name = "Wish Granter's Immortality"
 	desc = "You are being resurrected!"
 	icon_state = "wish_granter"
@@ -167,7 +167,7 @@
 	id = "blooddrunk"
 	duration = 10
 	tick_interval = 0
-	alert_type = /obj/screen/alert/status_effect/blooddrunk
+	alert_type = /atom/movable/screen/alert/status_effect/blooddrunk
 	var/last_health = 0
 	var/last_bruteloss = 0
 	var/last_fireloss = 0
@@ -176,7 +176,7 @@
 	var/last_cloneloss = 0
 	var/last_staminaloss = 0
 
-/obj/screen/alert/status_effect/blooddrunk
+/atom/movable/screen/alert/status_effect/blooddrunk
 	name = "Blood-Drunk"
 	desc = "You are drunk on blood! Your pulse thunders in your ears! Nothing can harm you!" //not true, and the item description mentions its actual effect
 	icon_state = "blooddrunk"
@@ -209,7 +209,7 @@
 		last_staminaloss = owner.getStaminaLoss()
 		owner.log_message("gained blood-drunk stun immunity", LOG_ATTACK)
 		owner.add_stun_absorption("blooddrunk", INFINITY, 4)
-		owner.playsound_local(get_turf(owner), 'sound/effects/singlebeat.ogg', 40, 1)
+		owner.playsound_local(get_turf(owner), 'sound/effects/singlebeat.ogg', 40, 1, use_reverb = FALSE)
 
 /datum/status_effect/blooddrunk/tick() //multiply the effect of healing by 10
 	if(owner.health > last_health)
@@ -312,34 +312,126 @@
 	playsound(owner, 'sound/weapons/fwoosh.ogg', 75, 0)
 	var/obj/item/slashy
 	slashy = owner.get_active_held_item()
-	for(var/mob/living/M in orange(1,owner))
+	for(var/mob/living/M in ohearers(1,owner))
 		slashy.attack(M, owner)
 
 /datum/status_effect/sword_spin/on_remove()
 	owner.visible_message("<span class='warning'>[owner]'s inhuman strength dissipates and the sword's runes grow cold!</span>")
 
-
 //Used by changelings to rapidly heal
 //Being on fire will suppress this healing
 /datum/status_effect/fleshmend
 	id = "fleshmend"
-	alert_type = /obj/screen/alert/status_effect/fleshmend
+	alert_type = /atom/movable/screen/alert/status_effect/fleshmend
+	//Actual healing lasts for 30 seconds
+	duration = 32 SECONDS
+	var/ticks_passed = 0
 
 /datum/status_effect/fleshmend/tick()
+	ticks_passed ++
 	if(owner.on_fire)
 		linked_alert.icon_state = "fleshmend_fire"
 		return
 	else
 		linked_alert.icon_state = "fleshmend"
-	owner.adjustBruteLoss(-1.5, FALSE)
-	owner.adjustFireLoss(-0.25, FALSE)
-	owner.adjustToxLoss(-0.5, FALSE)
-	owner.adjustCloneLoss(-0.5)
+	if(ticks_passed < 2)
+		return
+	else if(ticks_passed == 2)
+		to_chat(owner, "<span class=changeling>We begin to repair our tissue damage...</span>")
+	//Heals 2 brute per second, for a total of 60
+	owner.adjustBruteLoss(-2, FALSE, TRUE)
+	//Heals 1 fireloss per second, for a total of 30
+	owner.adjustFireLoss(-1, FALSE, TRUE)
+	//Heals 5 oxyloss per second for a total of 150
+	owner.adjustOxyLoss(-5, FALSE, TRUE)
+	//Heals 0.5 cloneloss per second for a total of 15
+	owner.adjustCloneLoss(-0.5, TRUE, TRUE)
 
-/obj/screen/alert/status_effect/fleshmend
+/atom/movable/screen/alert/status_effect/fleshmend
 	name = "Fleshmend"
 	desc = "Our wounds are rapidly healing. <i>This effect is prevented if we are on fire.</i>"
 	icon_state = "fleshmend"
+
+/datum/status_effect/changeling
+	var/datum/antagonist/changeling/ling
+	var/chem_per_tick = 1
+
+/datum/status_effect/changeling/on_apply()
+	ling = is_changeling(owner)
+	if(!ling)
+		return FALSE
+	return TRUE
+
+/datum/status_effect/changeling/tick()
+	if(ling.chem_charges < chem_per_tick)
+		qdel(src)
+		return FALSE
+	ling.chem_charges -= chem_per_tick
+	return TRUE
+
+//Changeling invisibility
+/datum/status_effect/changeling/camoflague
+	id = "changelingcamo"
+	alert_type = /atom/movable/screen/alert/status_effect/changeling_camoflague
+	tick_interval = 5
+
+/datum/status_effect/changeling/camoflague/tick()
+	if(!..())
+		return
+	if(owner.on_fire)
+		large_increase()
+		return
+	owner.alpha = max(owner.alpha - 20, 0)
+
+/datum/status_effect/changeling/camoflague/on_apply()
+	if(!..())
+		return FALSE
+	RegisterSignal(owner, COMSIG_MOVABLE_MOVED, .proc/slight_increase)
+	RegisterSignal(owner, COMSIG_MOB_APPLY_DAMGE, .proc/large_increase)
+	RegisterSignal(owner, COMSIG_MOB_ITEM_ATTACK, .proc/large_increase)
+	RegisterSignal(owner, COMSIG_ATOM_BUMPED, .proc/slight_increase)
+	return TRUE
+
+/datum/status_effect/changeling/camoflague/on_remove()
+	UnregisterSignal(owner, list(COMSIG_MOVABLE_MOVED, COMSIG_MOB_APPLY_DAMGE, COMSIG_ATOM_BUMPED))
+	owner.alpha = 255
+
+/datum/status_effect/changeling/camoflague/proc/slight_increase()
+	owner.alpha = min(owner.alpha + 15, 255)
+
+/datum/status_effect/changeling/camoflague/proc/large_increase()
+	owner.alpha = min(owner.alpha + 50, 255)
+
+/atom/movable/screen/alert/status_effect/changeling_camoflague
+	name = "Camoflague"
+	desc = "We have adapted our skin to refract light around us."
+	icon_state = "changeling_camo"
+
+//Changeling mindshield
+/datum/status_effect/changeling/mindshield
+	id = "changelingmindshield"
+	alert_type = /atom/movable/screen/alert/status_effect/changeling_mindshield
+	tick_interval = 30
+
+/datum/status_effect/changeling/mindshield/tick()
+	if(..() && owner.on_fire)
+		qdel(src)
+
+/datum/status_effect/changeling/mindshield/on_apply()
+	if(!..())
+		return FALSE
+	ADD_TRAIT(owner, TRAIT_FAKE_MINDSHIELD, CHANGELING_TRAIT)
+	owner.sec_hud_set_implants()
+	return TRUE
+
+/datum/status_effect/changeling/mindshield/on_remove()
+	REMOVE_TRAIT(owner, TRAIT_FAKE_MINDSHIELD, CHANGELING_TRAIT)
+	owner.sec_hud_set_implants()
+
+/atom/movable/screen/alert/status_effect/changeling_mindshield
+	name = "Fake Mindshield"
+	desc = "We are emitting a signal, causing us to appear as mindshielded to security HUDs."
+	icon_state = "changeling_mindshield"
 
 /datum/status_effect/exercised
 	id = "Exercised"
@@ -426,13 +518,13 @@
 			itemUser.adjustOrganLoss(ORGAN_SLOT_BRAIN, -1.5)
 			itemUser.adjustCloneLoss(-0.5) //Becasue apparently clone damage is the bastion of all health
 		//Heal all those around you, unbiased
-		for(var/mob/living/L in view(7, owner))
+		for(var/mob/living/L in hearers(7, owner))
 			if(L.health < L.maxHealth)
 				new /obj/effect/temp_visual/heal(get_turf(L), "#375637")
 			if(iscarbon(L))
 				L.adjustBruteLoss(-3.5)
 				L.adjustFireLoss(-3.5)
-				L.adjustToxLoss(-3.5, forced = TRUE) //Because Slime People are people too
+				L.adjustToxLoss(-3.5, FALSE, TRUE) //Because Slime People are people too
 				L.adjustOxyLoss(-3.5)
 				L.adjustStaminaLoss(-3.5)
 				L.adjustOrganLoss(ORGAN_SLOT_BRAIN, -3.5)
@@ -444,17 +536,16 @@
 				var/mob/living/simple_animal/SM = L
 				SM.adjustHealth(-3.5, forced = TRUE)
 
-/obj/screen/alert/status_effect/regenerative_core
+/atom/movable/screen/alert/status_effect/regenerative_core
 	name = "Blessing of the Necropolis"
 	desc = "The power of the necropolis flows through you. You could get used to this..."
 	icon_state = "regenerative_core"
-	name = "Blessing of the Necropolis"
 
 /datum/status_effect/regenerative_core
 	id = "Regenerative Core"
 	duration = 300
 	status_type = STATUS_EFFECT_REPLACE
-	alert_type = /obj/screen/alert/status_effect/regenerative_core
+	alert_type = /atom/movable/screen/alert/status_effect/regenerative_core
 	var/power = 1
 	var/alreadyinfected = FALSE
 

@@ -6,7 +6,7 @@
 	layer = PROJECTILE_HIT_THRESHHOLD_LAYER
 	plane = FLOOR_PLANE
 	max_integrity = 200
-	armor = list("melee" = 50, "bullet" = 20, "laser" = 20, "energy" = 20, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 30)
+	armor = list("melee" = 50, "bullet" = 20, "laser" = 20, "energy" = 20, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 30, "stamina" = 0)
 
 	var/uses = 20
 	var/cooldown = 0
@@ -18,14 +18,14 @@
 	. += "<span class='notice'>It has <b>[uses]</b> uses of foam remaining.</span>"
 
 /obj/machinery/ai_slipper/power_change()
-	if(stat & BROKEN)
+	if(machine_stat & BROKEN)
 		return
 	else
 		if(powered())
-			stat &= ~NOPOWER
+			set_machine_stat(machine_stat & ~NOPOWER)
 		else
-			stat |= NOPOWER
-		if((stat & (NOPOWER|BROKEN)) || cooldown_time > world.time || !uses)
+			set_machine_stat(machine_stat | NOPOWER)
+		if((machine_stat & (NOPOWER|BROKEN)) || cooldown_time > world.time || !uses)
 			icon_state = "ai-slipper0"
 		else
 			icon_state = "ai-slipper1"

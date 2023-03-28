@@ -15,8 +15,15 @@ GLOBAL_LIST_INIT(valid_keys, list(
 	"Shift" = 1, "Ctrl" = 1, "Numlock" = 1, "Scroll" = 1, "Alt" = 1, "'" = 1, ";" = 1, "#" = 1, "GamepadUp" = 1, "GamepadDown" = 1, "GamepadLeft" = 1,
 	"GamepadRight" = 1, "GamepadDownLeft" = 1, "GamepadDownRight" = 1, "GamepadUpLeft" = 1, "GamepadUpRight" = 1, "GamepadFace1" = 1, "GamepadFace2" = 1,
 	"GamepadFace3" = 1, "GamepadFace4" = 1, "GamepadR1" = 1, "GamepadR2" = 1, "GamepadR3" = 1, "GamepadL1" = 1, "GamepadL2" = 1, "GamepadL3" = 1,
-	"GamepadStart" = 1, "GamepadSelect" = 1, "VolumeUp" = 1, "VolumeDown" = 1, "VolumeMute" = 1, "MediaPlayPause" = 1, "MediaStop" = 1, "MediaNext" = 1,
-	"MediaPrev" = 1
+	"GamepadStart" = 1, "GamepadSelect" = 1, "Gamepad2Up" = 1, "Gamepad2Down" = 1, "Gamepad2Left" = 1, "Gamepad2Right" = 1, "Gamepad2DownLeft" = 1,
+	"Gamepad2DownRight" = 1, "Gamepad2UpLeft" = 1, "Gamepad2UpRight" = 1, "Gamepad2Face1" = 1, "Gamepad2Face2" = 1, "Gamepad2Face3" = 1, "Gamepad2Face4" = 1,
+	"Gamepad2R1" = 1, "Gamepad2R2" = 1, "Gamepad2R3" = 1, "Gamepad2L1" = 1, "Gamepad2L2" = 1, "Gamepad2L3" = 1,	"Gamepad2Start" = 1, "Gamepad2Select" = 1,
+	"Gamepad3Up" = 1, "Gamepad3Down" = 1, "Gamepad3Left" = 1, "Gamepad3Right" = 1, "Gamepad3DownLeft" = 1, "Gamepad3DownRight" = 1, "Gamepad3UpLeft" = 1,
+	"Gamepad3UpRight" = 1, "Gamepad3Face1" = 1, "Gamepad3Face2" = 1, "Gamepad3Face3" = 1, "Gamepad3Face4" = 1, "Gamepad3R1" = 1, "Gamepad3R2" = 1, "Gamepad3R3" = 1,
+	"Gamepad3L1" = 1, "Gamepad3L2" = 1, "Gamepad3L3" = 1, "Gamepad3Start" = 1, "Gamepad3Select" = 1, "Gamepad4Up" = 1, "Gamepad4Down" = 1, "Gamepad4Left" = 1,
+	"Gamepad4Right" = 1, "Gamepad4DownLeft" = 1,"Gamepad4DownRight" = 1, "Gamepad4UpLeft" = 1, "Gamepad4UpRight" = 1, "Gamepad4Face1" = 1, "Gamepad4Face2" = 1,
+	"Gamepad4Face3" = 1, "Gamepad4Face4" = 1, "Gamepad4R1" = 1, "Gamepad4R2" = 1, "Gamepad4R3" = 1, "Gamepad4L1" = 1, "Gamepad4L2" = 1, "Gamepad4L3" = 1,
+	"Gamepad4Start" = 1, "Gamepad4Select" = 1, "VolumeUp" = 1, "VolumeDown" = 1, "VolumeMute" = 1, "MediaPlayPause" = 1, "MediaStop" = 1, "MediaNext" = 1,	"MediaPrev" = 1
 ))
 
 /proc/input_sanity_check(client/C, key)
@@ -27,8 +34,8 @@ GLOBAL_LIST_INIT(valid_keys, list(
 		log_admin("[key_name(C)] just attempted to send an invalid keypress with length over 32 characters, likely malicious.")
 		message_admins("Mob [(C.mob)] with the ckey [(C.ckey)] just attempted to send an invalid keypress with length over 32 characters, likely malicious.")
 	else
-		log_admin_private("[key_name(C)] just attempted to send an invalid keypress - \"[key]\", possibly malicious.")
-		message_admins("Mob [(C.mob)] with the ckey [(C.ckey)] just attempted to send an invalid keypress - \"[key]\", possibly malicious.")
+		log_admin_private("[key_name(C)] just attempted to send an invalid keypress - \"[key]\".")
+		message_admins("Mob [(C.mob)] with the ckey [(C.ckey)] just attempted to send an invalid keypress - \"[sanitize(key)]\".")
 
 	return TRUE
 
@@ -41,7 +48,7 @@ GLOBAL_LIST_INIT(valid_keys, list(
 
 	keys_held[_key] = world.time
 	var/movement = SSinput.movement_keys[_key]
-	if(!(next_move_dir_sub & movement) && !keys_held["Ctrl"])
+	if(!(next_move_dir_sub & movement) && !movement_locked)
 		next_move_dir_add |= movement
 
 	// Client-level keybindings are ones anyone should be able to do at any time
@@ -57,14 +64,24 @@ GLOBAL_LIST_INIT(valid_keys, list(
 	for (var/kb_name in prefs.key_bindings[full_key])
 		var/datum/keybinding/kb = GLOB.keybindings_by_name[kb_name]
 		kbs += kb
+	// WASD-type movement keys (not the native arrow keys) are handled through the keybind system here.
+	// They have "any_modifier" set, because they need to be activated even if a modifier key is pressed,
+	// since these modifier keys toggle effects like "change facing" that require the movement keys to function.
+	// Note that this doesn't prevent the user from binding CTRL-W to North: In that case *only* CTRL-W will function.
+	if (full_key != _key)
+		for (var/kb_name in prefs.key_bindings[_key])
+			var/datum/keybinding/kb = GLOB.keybindings_by_name[kb_name]
+			if (kb.any_modifier)
+				kbs += kb
 	kbs = sortList(kbs, /proc/cmp_keybinding_dsc)
-	for (var/datum/keybinding/kb in kbs)
-		if (kb.down(src))
+	for(var/datum/keybinding/kb in kbs)
+		if(kb.can_use(src) && kb.down(src))
 			break
+
 	if(holder)
-		holder.key_down(full_key, src)
+		holder.key_down(_key, src)  //full_key is not necessary here, _key is enough
 	if(mob.focus)
-		mob.focus.key_down(full_key, src)
+		mob.focus.key_down(_key, src) //same as above
 
 /client/verb/keyUp(_key as text)
 	set instant = TRUE
@@ -75,7 +92,7 @@ GLOBAL_LIST_INIT(valid_keys, list(
 
 	keys_held -= _key
 	var/movement = SSinput.movement_keys[_key]
-	if(!(next_move_dir_add & movement))
+	if(!(next_move_dir_add & movement) && !movement_locked)
 		next_move_dir_sub |= movement
 
 	// We don't do full key for release, because for mod keys you
@@ -85,18 +102,11 @@ GLOBAL_LIST_INIT(valid_keys, list(
 		var/datum/keybinding/kb = GLOB.keybindings_by_name[kb_name]
 		kbs += kb
 	kbs = sortList(kbs, /proc/cmp_keybinding_dsc)
-	for (var/datum/keybinding/kb in kbs)
-		if (kb.up(src))
+	for(var/datum/keybinding/kb in kbs)
+		if(kb.can_use(src) && kb.up(src))
 			break
 
 	if(holder)
 		holder.key_up(_key, src)
 	if(mob.focus)
 		mob.focus.key_up(_key, src)
-
-// Called every game tick
-/client/keyLoop()
-	if(holder)
-		holder.keyLoop(src)
-	if(mob?.focus)
-		mob.focus.keyLoop(src)

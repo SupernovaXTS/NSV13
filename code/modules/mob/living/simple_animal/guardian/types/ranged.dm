@@ -23,7 +23,7 @@
 	hive_fluff_string = "<span class='holoparasite'>The mass seems to be able to create more mass and also hide at will.</span>"
 	see_invisible = SEE_INVISIBLE_LIVING
 	see_in_dark = 8
-	toggle_button_type = /obj/screen/guardian/ToggleMode
+	toggle_button_type = /atom/movable/screen/guardian/ToggleMode
 	var/list/snares = list()
 	var/toggle = FALSE
 
@@ -106,8 +106,16 @@
 	var/mob/living/simple_animal/hostile/guardian/spawner
 	invisibility = INVISIBILITY_ABSTRACT
 
+/obj/effect/snare/Initialize(mapload)
+	. = ..()
+	var/static/list/loc_connections = list(
+		COMSIG_ATOM_ENTERED = .proc/on_entered,
+	)
+	AddElement(/datum/element/connect_loc, loc_connections)
 
-/obj/effect/snare/Crossed(AM as mob|obj)
+/obj/effect/snare/proc/on_entered(datum/source, AM as mob|obj)
+	SIGNAL_HANDLER
+
 	if(isliving(AM) && spawner && spawner.summoner && AM != spawner && !spawner.hasmatchingsummoner(AM))
 		to_chat(spawner.summoner, "<span class='danger'><B>[AM] has crossed surveillance snare, [name].</span></B>")
 		var/list/guardians = spawner.summoner.hasparasites()

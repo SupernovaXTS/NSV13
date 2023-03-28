@@ -19,7 +19,7 @@ Here is an example of the new formatting for anyone who wants to add more food i
 	name = "Xenoburger"													//Name that displays in the UI.
 	desc = "Smells caustic. Tastes like heresy."						//Duh
 	icon_state = "xburger"												//Refers to an icon in food.dmi
-/obj/item/reagent_containers/food/snacks/xenoburger/Initialize()		//Don't mess with this. | nO I WILL MESS WITH THIS
+/obj/item/reagent_containers/food/snacks/xenoburger/Initialize(mapload)		//Don't mess with this. | nO I WILL MESS WITH THIS
 	. = ..()														//Same here.
 	reagents.add_reagent(/datum/reagent/xenomicrobes, 10)						//This is what is in the food item. you may copy/paste
 	reagents.add_reagent(/datum/reagent/consumable/nutriment, 2)							//this line of code for all the contents.
@@ -270,7 +270,8 @@ All foods are distributed among various categories. Use common sense.
 			trash = null
 			return
 
-/obj/item/reagent_containers/food/snacks/proc/update_overlays(obj/item/reagent_containers/food/snacks/S)
+// We need to refactor this someday, like, in 3 years
+/obj/item/reagent_containers/food/snacks/proc/update_customizable_overlays(obj/item/reagent_containers/food/snacks/S)
 	cut_overlays()
 	var/mutable_appearance/filling = mutable_appearance(icon, "[initial(icon_state)]_filling")
 	if(S.filling_color == "#FFFFFF")
@@ -312,6 +313,14 @@ All foods are distributed among various categories. Use common sense.
 
 	return result
 
+/obj/item/reagent_containers/food/snacks/burn()
+	if(prob(25))
+		microwave_act()
+	else
+		var/turf/T = get_turf(src)
+		new /obj/item/reagent_containers/food/snacks/badrecipe(T)
+		qdel(src)
+
 /obj/item/reagent_containers/food/snacks/Destroy()
 	if(contents)
 		for(var/atom/movable/something in contents)
@@ -323,13 +332,13 @@ All foods are distributed among various categories. Use common sense.
 		if(iscorgi(M))
 			var/mob/living/L = M
 			if(bitecount == 0 || prob(50))
-				M.emote("me", 1, "nibbles away at \the [src]")
+				M.emote("me", 1, "nibbles away at \the [src].")
 			bitecount++
 			L.taste(reagents) // why should carbons get all the fun?
 			if(bitecount >= 5)
-				var/sattisfaction_text = pick("burps from enjoyment", "yaps for more", "woofs twice", "looks at the area where \the [src] was")
-				if(sattisfaction_text)
-					M.emote("me", 1, "[sattisfaction_text]")
+				var/satisfaction_text = pick("burps from enjoyment.", "yaps for more.", "woofs twice.", "looks at the area where \the [src] was.")
+				if(satisfaction_text)
+					M.emote("me", 1, "[satisfaction_text]")
 				qdel(src)
 
 /obj/item/reagent_containers/food/snacks/afterattack(obj/item/reagent_containers/M, mob/user, proximity)

@@ -1,11 +1,17 @@
-import { Fragment } from 'inferno';
 import { useBackend } from '../backend';
 import { Box, Button, LabeledList, NoticeBox, Section } from '../components';
 import { NtosWindow } from '../layouts';
 
 export const NtosCyborgRemoteMonitor = (props, context) => {
+  const { data } = useBackend(context);
+  const {
+    theme,
+  } = data;
   return (
-    <NtosWindow resizable>
+    <NtosWindow
+      theme={data.theme}
+      width={600}
+      height={800}>
       <NtosWindow.Content scrollable>
         <NtosCyborgRemoteMonitorContent />
       </NtosWindow.Content>
@@ -29,7 +35,7 @@ export const NtosCyborgRemoteMonitorContent = (props, context) => {
   }
 
   return (
-    <Fragment>
+    <>
       {!card && (
         <NoticeBox>
           Certain features require an ID card login.
@@ -87,6 +93,6 @@ export const NtosCyborgRemoteMonitorContent = (props, context) => {
           </Section>
         );
       })}
-    </Fragment>
+    </>
   );
 };

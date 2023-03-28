@@ -8,8 +8,8 @@
 	use_power = IDLE_POWER_USE
 	anchored = TRUE
 	density = TRUE
-	idle_power_usage = 50
-	active_power_usage = 300
+	idle_power_usage = 300
+	active_power_usage = 1200
 
 	var/cloud_id = 1
 	var/locked = FALSE
@@ -18,7 +18,7 @@
 	var/busy_icon_state
 	var/message_cooldown = 0
 
-/obj/machinery/public_nanite_chamber/Initialize()
+/obj/machinery/public_nanite_chamber/Initialize(mapload)
 	. = ..()
 	occupant_typecache = GLOB.typecache_living
 
@@ -33,9 +33,9 @@
 	update_icon()
 
 /obj/machinery/public_nanite_chamber/proc/inject_nanites(mob/living/attacker)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
-	if((stat & MAINT) || panel_open)
+	if((machine_stat & MAINT) || panel_open)
 		return
 	if(!occupant || busy)
 		return
@@ -61,9 +61,9 @@
 	occupant.AddComponent(/datum/component/nanites, 75, cloud_id)
 
 /obj/machinery/public_nanite_chamber/proc/change_cloud(mob/living/attacker)
-	if(stat & (NOPOWER|BROKEN))
+	if(machine_stat & (NOPOWER|BROKEN))
 		return
-	if((stat & MAINT) || panel_open)
+	if((machine_stat & MAINT) || panel_open)
 		return
 	if(!occupant || busy)
 		return
@@ -88,10 +88,10 @@
 /obj/machinery/public_nanite_chamber/update_icon()
 	cut_overlays()
 
-	if((stat & MAINT) || panel_open)
+	if((machine_stat & MAINT) || panel_open)
 		add_overlay("maint")
 
-	else if(!(stat & (NOPOWER|BROKEN)))
+	else if(!(machine_stat & (NOPOWER|BROKEN)))
 		if(busy || locked)
 			add_overlay("red")
 			if(locked)
@@ -166,7 +166,7 @@
 			if(nanites && nanites.cloud_id != cloud_id)
 				change_cloud(attacker)
 			return
-		if((MOB_ORGANIC in L.mob_biotypes) || (MOB_UNDEAD in L.mob_biotypes))
+		if((MOB_ORGANIC in L.mob_biotypes) || (MOB_UNDEAD in L.mob_biotypes) || HAS_TRAIT(L, TRAIT_NANITECOMPATIBLE))
 			inject_nanites(attacker)
 
 /obj/machinery/public_nanite_chamber/open_machine()

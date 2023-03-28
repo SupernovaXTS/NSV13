@@ -1,3 +1,5 @@
+// NSV13
+
 import { Fragment } from 'inferno';
 import { useBackend, useLocalState } from '../backend';
 import { Box, Button, LabeledList, ProgressBar, Section } from '../components';
@@ -6,7 +8,10 @@ import { Window } from '../layouts';
 export const FighterTug = (props, context) => {
   const { act, data } = useBackend(context);
   return (
-    <Window resizable>
+    <Window
+      resizable
+      width={400}
+      height={400}>
       <Window.Content scrollable>
         <Section title="Launch controls">
           <Button
@@ -20,7 +25,7 @@ export const FighterTug = (props, context) => {
             disabled={!data.loaded}
             color={data.ready && "green"}
             icon={!data.loaded ? "power-off" : "times"}
-            onClick={() => act('launch')} />  
+            onClick={() => act('launch')} />
         </Section>
         <Section title="Hardpoints:">
           {Object.keys(data.hardpoints).map(key => {

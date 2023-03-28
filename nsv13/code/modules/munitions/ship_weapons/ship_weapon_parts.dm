@@ -1,69 +1,21 @@
-/**
- * Munitions computer circuitboard
- */
-/obj/item/circuitboard/computer/ship/munitions_computer
-	name = "circuit board (munitions control computer)"
-	build_path = /obj/machinery/computer/ship/munitions_computer
+/obj/item/ship_weapon/parts //Base item
+	name = "weapon electronics"
+	desc = "This piece of equipment is a figment of your imagination, let the coders know how you got it!"
+	icon = 'icons/obj/module.dmi'
+	icon_state = "mcontroller"
+	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF | FREEZE_PROOF
+
+/obj/item/ship_weapon/parts/Destroy(force=FALSE)
+	if(!force)
+		return QDEL_HINT_LETMELIVE
+	return ..()
 
 /**
- * PDC/Flak mount circuitboard
- */
-/obj/item/circuitboard/machine/pdc_mount
-	name = "circuit board (pdc mount)"
-	desc = "You can use a screwdriver to switch between PDC and flak."
-	req_components = list(
-		/obj/item/stock_parts/manipulator = 4,
-		/obj/item/stock_parts/capacitor = 2,
-		/obj/item/stock_parts/matter_bin = 3,
-		/obj/item/ship_weapon/parts/firing_electronics = 1
-	)
-
-#define PATH_PDC /obj/machinery/ship_weapon/pdc_mount
-#define PATH_FLAK  /obj/machinery/ship_weapon/pdc_mount/flak
-
-/obj/item/circuitboard/machine/pdc_mount/Initialize()
-	. = ..()
-	if(!build_path)
-		if(prob(50))
-			name = "PDC Loading Rack (Machine Board)"
-			build_path = PATH_PDC
-		else
-			name = "Flak Loading Rack (Machine Board)"
-			build_path = PATH_FLAK
-
-/obj/item/circuitboard/machine/pdc_mount/attackby(obj/item/I, mob/user, params)
-	if(I.tool_behaviour == TOOL_SCREWDRIVER)
-		var/obj/item/circuitboard/new_type
-		var/new_setting
-		switch(build_path)
-			if(PATH_PDC)
-				new_type = /obj/item/circuitboard/machine/pdc_mount/flak
-				new_setting = "Flak"
-			if(PATH_FLAK)
-				new_type = /obj/item/circuitboard/machine/pdc_mount/
-				new_setting = "PDC"
-		name = initial(new_type.name)
-		build_path = initial(new_type.build_path)
-		I.play_tool_sound(src)
-		to_chat(user, "<span class='notice'>You change the circuitboard setting to \"[new_setting]\".</span>")
-		return
-		
-/obj/item/circuitboard/machine/pdc_mount
-	name = "PDC Mount (Machine Board)"
-	build_path = PATH_PDC
-
-/obj/item/circuitboard/machine/pdc_mount/flak
-	name = "Flak Loading Rack (Machine Board)"
-	build_path = PATH_FLAK
-
-#undef PATH_PDC
-#undef PATH_FLAK
-
-/**
- * Firing electronics - used for pdcs, torp tubes, and railguns
+ * Firing electronics - used in construction of <s>new</s> old munitions machinery
  */
 /obj/item/ship_weapon/parts/firing_electronics
 	name = "firing electronics"
+	desc = "The firing circuitry for a large weapon."
 	icon = 'icons/obj/module.dmi'
 	icon_state = "mcontroller"
 
@@ -72,39 +24,54 @@
  */
 /obj/item/ship_weapon/parts/loading_tray
 	name = "loading tray"
+	desc = "A loading tray for a large weapon."
 	icon = 'nsv13/icons/obj/items_and_weapons.dmi'
 	icon_state = "railgun_tray"
 	lefthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_lefthand.dmi'
 	righthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_righthand.dmi'
 
-/obj/item/ship_weapon/parts/loading_tray/Initialize()
+/obj/item/ship_weapon/parts/loading_tray/Initialize(mapload)
 	..()
-	AddComponent(/datum/component/twohanded/required)
+	AddComponent(/datum/component/two_handed, require_twohands=TRUE)
 
 /**
  * Railgun rail
  */
 /obj/item/ship_weapon/parts/railgun_rail
 	name = "rail"
+	desc = "A magnetic rail for a railgun."
 	icon = 'nsv13/icons/obj/items_and_weapons.dmi'
 	icon_state = "railgun_rail"
 	lefthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_lefthand.dmi'
 	righthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_righthand.dmi'
 
-/obj/item/ship_weapon/parts/railgun_rail/Initialize()
+/obj/item/ship_weapon/parts/railgun_rail/Initialize(mapload)
 	..()
-	AddComponent(/datum/component/twohanded/required)
-	
+	AddComponent(/datum/component/two_handed, require_twohands=TRUE)
+
 /**
  * MAC Barrel
  */
 /obj/item/ship_weapon/parts/mac_barrel
 	name = "barrel"
+	desc = "The barrel for a MAC."
 	icon = 'nsv13/icons/obj/items_and_weapons.dmi'
 	icon_state = "mac_barrel"
 	lefthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_lefthand.dmi'
 	righthand_file = 'nsv13/icons/mob/inhands/weapons/bombs_righthand.dmi'
 
-/obj/item/ship_weapon/parts/mac_barrel/Initialize()
+/obj/item/ship_weapon/parts/mac_barrel/Initialize(mapload)
 	..()
-	AddComponent(/datum/component/twohanded/required)
+	AddComponent(/datum/component/two_handed, require_twohands=TRUE)
+
+/obj/item/ship_weapon/parts/broadside_casing
+	name = "broadside shell casing"
+	desc = "An empty casing for the Broadside Cannon. Load it into the Shell Packer!"
+	icon = 'nsv13/icons/obj/munitions.dmi'
+	icon_state = "broadside_casing"
+
+/obj/item/ship_weapon/parts/broadside_load
+	name = "broadside shell load"
+	desc = "A loose load meant for a Broadside shell. Load it into the Shell Packer!"
+	icon = 'nsv13/icons/obj/munitions.dmi'
+	icon_state = "broadside_load"

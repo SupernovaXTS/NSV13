@@ -1,4 +1,3 @@
-
 /datum/datacore
 	var/medical[] = list()
 	var/medicalPrintCount = 0
@@ -75,37 +74,55 @@
 					D.adjust_money(amount)
 					return
 
-/datum/datacore/proc/addMinorCrime(id = "", datum/data/crime/crime)
+/**
+  * Adds crime to security record.
+  *
+  * Is used to add single crime to someone's security record.
+  * Arguments:
+  * * id - record id.
+  * * datum/data/crime/crime - premade array containing every variable, usually created by createCrimeEntry.
+  */
+/datum/datacore/proc/addCrime(id = "", datum/data/crime/crime)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["mi_crim"]
+			var/list/crimes = R.fields["crim"]
 			crimes |= crime
 			return
 
-/datum/datacore/proc/removeMinorCrime(id, cDataId)
+/**
+  * Deletes crime from security record.
+  *
+  * Is used to delete single crime to someone's security record.
+  * Arguments:
+  * * id - record id.
+  * * cDataId - id of already existing crime.
+  */
+/datum/datacore/proc/removeCrime(id, cDataId)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["mi_crim"]
+			var/list/crimes = R.fields["crim"]
 			for(var/datum/data/crime/crime in crimes)
 				if(crime.dataId == text2num(cDataId))
 					crimes -= crime
 					return
 
-/datum/datacore/proc/removeMajorCrime(id, cDataId)
+/**
+  * Adds details to a crime.
+  *
+  * Is used to add or replace details to already existing crime.
+  * Arguments:
+  * * id - record id.
+  * * cDataId - id of already existing crime.
+  * * details - data you want to add.
+  */
+/datum/datacore/proc/addCrimeDetails(id, cDataId, details)
 	for(var/datum/data/record/R in security)
 		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["ma_crim"]
+			var/list/crimes = R.fields["crim"]
 			for(var/datum/data/crime/crime in crimes)
 				if(crime.dataId == text2num(cDataId))
-					crimes -= crime
+					crime.crimeDetails = details
 					return
-
-/datum/datacore/proc/addMajorCrime(id = "", datum/data/crime/crime)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["ma_crim"]
-			crimes |= crime
-			return
 
 /datum/datacore/proc/manifest()
 	for(var/i in GLOB.new_player_list)
@@ -116,39 +133,44 @@
 			manifest_inject(N.new_character, N.client)
 		CHECK_TICK
 
-/datum/datacore/proc/manifest_modify(name, assignment)
+/datum/datacore/proc/manifest_modify(name, assignment, hudstate)
 	var/datum/data/record/foundrecord = find_record("name", name, GLOB.data_core.general)
 	if(foundrecord)
 		foundrecord.fields["rank"] = assignment
+		foundrecord.fields["hud"] = hudstate
 
 /datum/datacore/proc/get_manifest()
 	var/list/manifest_out = list()
 	var/list/departments = list(
-		"Command" = GLOB.command_positions,
-		"Security" = GLOB.security_positions,
-		"Engineering" = GLOB.engineering_positions,
-		"Medical" = GLOB.medical_positions,
-		"Science" = GLOB.science_positions,
-		"Supply" = GLOB.supply_positions,
-		"Civilian" = GLOB.civilian_positions,
-		"Silicon" = GLOB.nonhuman_positions,
-		"Munitions" = GLOB.munitions_positions//NSV ADDED DEPARTMENTS
+		"Command" = GLOB.command_positions_hud,
+		"Very Important People" = GLOB.important_positions_hud,
+		"Security" = GLOB.security_positions_hud,
+		"Engineering" = GLOB.engineering_positions_hud,
+		"Medical" = GLOB.medical_positions_hud,
+		"Science" = GLOB.science_positions_hud,
+		"Supply" = GLOB.supply_positions_hud,
+		"Civilian" = GLOB.civilian_positions_hud,
+		"Munitions" = GLOB.munitions_positions_hud, //NSV ADDED DEPARTMENTS
+		"Silicon" = GLOB.nonhuman_positions // this is something that doesn't work. need to fix.
 	)
 	for(var/datum/data/record/t in GLOB.data_core.general)
 		var/name = t.fields["name"]
 		var/rank = t.fields["rank"]
+		var/hud = t.fields["hud"]
 		var/has_department = FALSE
 		for(var/department in departments)
-			var/list/jobs = departments[department]
-			if(rank in jobs)
+			var/list/jobs_hud = departments[department]
+			if(hud in jobs_hud)
 				if(!manifest_out[department])
 					manifest_out[department] = list()
 				manifest_out[department] += list(list(
 					"name" = name,
 					"rank" = rank
+					// note: `"hud" = hud` is not needed. that is used to sort, not used to display. check `if(hud in jobs_hud)`
 				))
 				has_department = TRUE
-				break
+				if(department != "Command") //List heads in both command and their own department.
+					break
 		if(!has_department)
 			if(!manifest_out["Misc"])
 				manifest_out["Misc"] = list()
@@ -156,7 +178,12 @@
 				"name" = name,
 				"rank" = rank
 			))
-	return manifest_out
+	//Sort the list by 'departments' primarily so command is on top.
+	var/list/sorted_out = list()
+	for(var/department in (departments += "Misc"))
+		if(!isnull(manifest_out[department]))
+			sorted_out[department] = manifest_out[department]
+	return sorted_out
 
 /datum/datacore/proc/get_manifest_html(monochrome = FALSE)
 	var/list/manifest = get_manifest()
@@ -221,6 +248,7 @@
 		G.fields["id"]			= id
 		G.fields["name"]		= H.real_name
 		G.fields["rank"]		= assignment
+		G.fields["hud"]			= get_hud_by_jobname(assignment)
 		G.fields["age"]			= H.age
 		G.fields["species"]	= H.dna.species.name
 		G.fields["fingerprint"]	= rustg_hash_string(RUSTG_HASH_MD5, H.dna.uni_identity)
@@ -254,8 +282,7 @@
 		S.fields["name"]		= H.real_name
 		S.fields["criminal"]	= "None"
 		S.fields["citation"]	= list()
-		S.fields["mi_crim"]		= list()
-		S.fields["ma_crim"]		= list()
+		S.fields["crim"]		= list()
 		S.fields["notes"]		= "No notes."
 		security += S
 
@@ -278,9 +305,9 @@
 
 /datum/datacore/proc/get_id_photo(mob/living/carbon/human/H, client/C, show_directions = list(SOUTH))
 	var/datum/job/J = SSjob.GetJob(H.mind.assigned_role)
-	var/datum/preferences/P
+	var/datum/character_save/CS
 	if(!C)
 		C = H.client
 	if(C)
-		P = C.prefs
-	return get_flat_human_icon(null, J, P, DUMMY_HUMAN_SLOT_MANIFEST, show_directions)
+		CS = C.prefs.active_character
+	return get_flat_human_icon(null, J, CS, DUMMY_HUMAN_SLOT_MANIFEST, show_directions)

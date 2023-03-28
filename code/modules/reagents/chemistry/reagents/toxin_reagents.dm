@@ -5,6 +5,7 @@
 	name = "Toxin"
 	description = "A toxic chemical."
 	color = "#CF3600" // rgb: 207, 54, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	taste_description = "bitterness"
 	taste_mult = 1.2
 	var/toxpwr = 1.5
@@ -20,13 +21,15 @@
 	name = "Amatoxin"
 	description = "A powerful poison derived from certain species of mushroom."
 	color = "#792300" // rgb: 121, 35, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 2.5
 	taste_description = "mushroom"
 
 /datum/reagent/toxin/mutagen
-	name = "Unstable mutagen"
+	name = "Unstable Mutagen"
 	description = "Might cause unpredictable mutations. Keep away from children."
 	color = "#00FF00"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 0
 	taste_description = "slime"
 	taste_mult = 0.9
@@ -53,10 +56,11 @@
 /datum/reagent/toxin/plasma
 	name = "Plasma"
 	description = "Plasma in its liquid form."
-	taste_description = "bitterness"
+	taste_description = "a burning, tingling sensation"
 	specific_heat = SPECIFIC_HEAT_PLASMA
 	taste_mult = 1.5
 	color = "#8228A0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 3
 	process_flags = ORGANIC | SYNTHETIC
 
@@ -88,6 +92,7 @@
 	name = "Lexorin"
 	description = "A powerful poison used to stop respiration."
 	color = "#7DC3A0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0
 	taste_description = "acid"
 
@@ -108,6 +113,7 @@
 	name = "Slime Jelly"
 	description = "A gooey semi-liquid produced from one of the deadliest lifeforms in existence. SO REAL."
 	color = "#801E28" // rgb: 128, 30, 40
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0
 	taste_description = "slime"
 	taste_mult = 1.3
@@ -122,15 +128,36 @@
 		. = 1
 	..()
 
+/datum/reagent/toxin/slimeooze
+	name = "Slime Ooze"
+	description = "A gooey semi-liquid produced from Oozelings"
+	color = "#611e80"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
+	toxpwr = 0
+	taste_description = "slime"
+	taste_mult = 1.5
+
+/datum/reagent/toxin/slimeooze/on_mob_life(mob/living/carbon/M)
+	if(prob(10))
+		to_chat(M, "<span class='danger'>Your insides are burning!</span>")
+		M.adjustToxLoss(rand(1,10)*REM, 0)
+		. = 1
+	else if(prob(40))
+		M.heal_bodypart_damage(5*REM)
+		. = 1
+	..()
+
 /datum/reagent/toxin/minttoxin
 	name = "Mint Toxin"
 	description = "Useful for dealing with undesirable customers."
 	color = "#CF3600" // rgb: 207, 54, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN
 	toxpwr = 0
 	taste_description = "mint"
 
 /datum/reagent/toxin/minttoxin/on_mob_life(mob/living/carbon/M)
-	if(HAS_TRAIT(M, TRAIT_FAT))
+	if(HAS_TRAIT_FROM(M, TRAIT_FAT, OBESITY))
+		M.client?.give_award(/datum/award/achievement/misc/mintgib, M)
 		M.gib()
 	return ..()
 
@@ -139,6 +166,7 @@
 	description = "A deadly neurotoxin produced by the dreaded spess carp."
 	silent_toxin = TRUE
 	color = "#003333" // rgb: 0, 51, 51
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 2
 	taste_description = "fish"
 
@@ -153,27 +181,27 @@
 	silent_toxin = TRUE
 	reagent_state = SOLID
 	color = "#669900" // rgb: 102, 153, 0
-	toxpwr = 0.5
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
+	toxpwr = 0
 	taste_description = "death"
 
-/datum/reagent/toxin/zombiepowder/on_mob_metabolize(mob/living/L)
+/datum/reagent/toxin/zombiepowder/on_mob_life(mob/living/carbon/M)
+	if(current_cycle >= 10) // delayed activation for toxin
+		M.adjustStaminaLoss((current_cycle - 5)*REM, 0)
+	if(M.getStaminaLoss() >= 145 && !HAS_TRAIT(M, TRAIT_FAKEDEATH)) // fake death tied to stamina for interesting interactions - 23 ticks to fake death with pure ZP
+		M.fakedeath(type)
 	..()
-	L.fakedeath(type)
 
 /datum/reagent/toxin/zombiepowder/on_mob_end_metabolize(mob/living/L)
 	L.cure_fakedeath(type)
 	..()
 
-/datum/reagent/toxin/zombiepowder/on_mob_life(mob/living/carbon/M)
-	M.adjustOxyLoss(0.5*REM, 0)
-	..()
-	. = 1
-
 /datum/reagent/toxin/ghoulpowder
 	name = "Ghoul Powder"
-	description = "A strong neurotoxin that slows metabolism to a death-like state, while keeping the patient fully active. Causes toxin buildup if used too long."
+	description = "A strong neurotoxin that slows metabolism to a death-like state while keeping the patient fully active. Causes toxin buildup if used too long."
 	reagent_state = SOLID
 	color = "#664700" // rgb: 102, 71, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0.8
 	taste_description = "death"
 
@@ -192,8 +220,9 @@
 
 /datum/reagent/toxin/mindbreaker
 	name = "Mindbreaker Toxin"
-	description = "A powerful hallucinogen. Not a thing to be messed with. For some mental patients. it counteracts their symptoms and anchors them to reality."
+	description = "A mild hallucinogen. Beneficial to some mental patients."
 	color = "#B31008" // rgb: 139, 166, 233
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 0
 	taste_description = "sourness"
 
@@ -205,6 +234,7 @@
 	name = "Plant-B-Gone"
 	description = "A harmful toxic mixture to kill plantlife. Do not ingest!"
 	color = "#49002E" // rgb: 73, 0, 46
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 1
 	taste_mult = 1
 
@@ -230,11 +260,13 @@
 	name = "Weed Killer"
 	description = "A harmful toxic mixture to kill weeds. Do not ingest!"
 	color = "#4B004B" // rgb: 75, 0, 75
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 
 /datum/reagent/toxin/pestkiller
 	name = "Pest Killer"
 	description = "A harmful toxic mixture to kill pests. Do not ingest!"
 	color = "#4B004B" // rgb: 75, 0, 75
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 1
 
 /datum/reagent/toxin/pestkiller/reaction_mob(mob/living/M, method=TOUCH, reac_volume)
@@ -247,6 +279,7 @@
 	name = "Spore Toxin"
 	description = "A natural toxin produced by blob spores that inhibits vision when ingested."
 	color = "#9ACD32"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 1
 
 /datum/reagent/toxin/spore/on_mob_life(mob/living/carbon/C)
@@ -259,6 +292,7 @@
 	name = "Burning Spore Toxin"
 	description = "A natural toxin produced by blob spores that induces combustion in its victim."
 	color = "#9ACD32"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0.5
 	taste_description = "burning"
 
@@ -273,6 +307,7 @@
 	silent_toxin = TRUE
 	reagent_state = SOLID
 	color = "#000067" // rgb: 0, 0, 103
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0
 	metabolization_rate = 1.5 * REAGENTS_METABOLISM
 
@@ -294,6 +329,7 @@
 	name = "Beer"
 	description = "A specially-engineered sedative disguised as beer. It induces instant sleep in its target."
 	color = "#664300" // rgb: 102, 67, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 1.5 * REAGENTS_METABOLISM
 	taste_description = "piss water"
 	glass_icon_state = "beerglass"
@@ -314,6 +350,7 @@
 	description = "Finely ground coffee beans, used to make coffee."
 	reagent_state = SOLID
 	color = "#5B2E0D" // rgb: 91, 46, 13
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0.5
 
 /datum/reagent/toxin/teapowder
@@ -321,6 +358,7 @@
 	description = "Finely shredded tea leaves, used for making tea."
 	reagent_state = SOLID
 	color = "#7F8400" // rgb: 127, 132, 0
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BARTENDER_SERVING
 	toxpwr = 0.1
 	taste_description = "green tea"
 
@@ -329,6 +367,7 @@
 	description = "A nonlethal poison that inhibits speech in its victim."
 	silent_toxin = TRUE
 	color = "#F0F8FF" // rgb: 240, 248, 255
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST | CHEMICAL_GOAL_BARTENDER_SERVING
 	toxpwr = 0
 	taste_description = "silence"
 
@@ -341,6 +380,7 @@
 	description = "A nonlethal poison that causes extreme fatigue and weakness in its victim."
 	silent_toxin = TRUE
 	color = "#6E2828"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	data = 13
 	toxpwr = 0
 
@@ -355,6 +395,7 @@
 	description = "An extremely radioactive material in liquid form. Ingestion results in fatal irradiation."
 	reagent_state = LIQUID
 	color = "#787878"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.25 * REAGENTS_METABOLISM
 	toxpwr = 0
 	process_flags = ORGANIC | SYNTHETIC
@@ -369,6 +410,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#FA6464"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	metabolization_rate = 0.25 * REAGENTS_METABOLISM
 	overdose_threshold = 30
 	toxpwr = 0
@@ -392,7 +434,7 @@
 
 /datum/reagent/toxin/histamine/overdose_process(mob/living/M)
 	M.adjustOxyLoss(2*REM, 0)
-	M.adjustBruteLoss(2*REM, FALSE, FALSE, BODYPART_ORGANIC)
+	M.adjustBruteLoss(2*REM, FALSE, FALSE, BODYTYPE_ORGANIC)
 	M.adjustToxLoss(2*REM, 0)
 	..()
 	. = 1
@@ -403,6 +445,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#B4004B"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 	toxpwr = 1
 
@@ -418,6 +461,7 @@
 	description = "An exotic poison extracted from highly toxic fauna. Causes scaling amounts of toxin damage and bruising depending and dosage. Often decays into Histamine."
 	reagent_state = LIQUID
 	color = "#F0FFF0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.25 * REAGENTS_METABOLISM
 	toxpwr = 0
 
@@ -433,9 +477,10 @@
 
 /datum/reagent/toxin/fentanyl
 	name = "Fentanyl"
-	description = "Fentanyl will inhibit brain function and cause toxin damage before eventually knocking out its victim."
+	description = "Fentanyl will inhibit brain function and cause toxin damage before eventually incapacitating its victim."
 	reagent_state = LIQUID
 	color = "#64916E"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 	toxpwr = 0
 
@@ -453,6 +498,7 @@
 	description = "An infamous poison known for its use in assassination. Causes small amounts of toxin damage with a small chance of oxygen damage or a stun."
 	reagent_state = LIQUID
 	color = "#00B4FF"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	metabolization_rate = 0.125 * REAGENTS_METABOLISM
 	toxpwr = 1.25
 
@@ -470,6 +516,7 @@
 	description = "The result of some abomination of cookery, food so bad it's toxic."
 	reagent_state = LIQUID
 	color = "#d6d6d8"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.25 * REAGENTS_METABOLISM
 	toxpwr = 0.5
 	taste_description = "bad cooking"
@@ -480,12 +527,13 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#C8C8C8"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	metabolization_rate = 0.4 * REAGENTS_METABOLISM
 	toxpwr = 0
 
 /datum/reagent/toxin/itching_powder/reaction_mob(mob/living/M, method=TOUCH, reac_volume)
 	if(method == TOUCH || method == VAPOR)
-		M.reagents.add_reagent(/datum/reagent/toxin/itching_powder, reac_volume)
+		M.reagents?.add_reagent(/datum/reagent/toxin/itching_powder, reac_volume)
 
 /datum/reagent/toxin/itching_powder/on_mob_life(mob/living/carbon/M)
 	if(prob(15))
@@ -512,6 +560,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#7F10C0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 	toxpwr = 2.5
 
@@ -543,6 +592,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#195096"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.25 * REAGENTS_METABOLISM
 	toxpwr = 0
 	taste_mult = 0 // undetectable, I guess?
@@ -561,6 +611,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#6496FA"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.75 * REAGENTS_METABOLISM
 	toxpwr = 0
 
@@ -577,6 +628,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#7DC3A0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.125 * REAGENTS_METABOLISM
 	toxpwr = 0.5
 
@@ -591,10 +643,11 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#FFFFFF"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 0
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 
-/datum/reagent/toxin/amanitin/on_mob_end_metabolize(mob/living/M)
+/datum/reagent/toxin/amanitin/on_mob_delete(mob/living/M)
 	var/toxdamage = current_cycle*3*REM
 	M.log_message("has taken [toxdamage] toxin damage from amanitin toxin", LOG_ATTACK)
 	M.adjustToxLoss(toxdamage)
@@ -607,6 +660,7 @@
 	taste_description = "mothballs"
 	reagent_state = LIQUID
 	color = "#F0FFF0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_GOAL_BOTANIST_HARVEST
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 	toxpwr = 0
 
@@ -622,6 +676,7 @@
 	description = "Coniine metabolizes extremely slowly, but deals high amounts of toxin damage and stops breathing."
 	reagent_state = LIQUID
 	color = "#7DC3A0"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.06 * REAGENTS_METABOLISM
 	toxpwr = 1.75
 
@@ -634,6 +689,7 @@
 	description = "A powerful emetic, causes uncontrollable vomiting.  May result in vomiting organs at high doses."
 	reagent_state = LIQUID
 	color = "#2f6617" //A sickly green color
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = REAGENTS_METABOLISM
 	overdose_threshold = 29
 	toxpwr = 0
@@ -659,6 +715,7 @@
 	description = "Causes slight toxin damage followed by chain-stunning and oxygen damage."
 	reagent_state = LIQUID
 	color = "#191919"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.125 * REAGENTS_METABOLISM
 	toxpwr = 1
 
@@ -675,6 +732,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#C8C8C8" //RGB: 200, 200, 200
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.2 * REAGENTS_METABOLISM
 	toxpwr = 0
 
@@ -693,6 +751,7 @@
 	silent_toxin = TRUE
 	reagent_state = LIQUID
 	color = "#AC88CA" //RGB: 172, 136, 202
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.6 * REAGENTS_METABOLISM
 	toxpwr = 0.5
 	taste_description = "spinning"
@@ -701,62 +760,26 @@
 /datum/reagent/toxin/rotatium/on_mob_life(mob/living/carbon/M)
 	if(M.hud_used)
 		if(current_cycle >= 20 && current_cycle%20 == 0)
-			var/list/screens = list(M.hud_used.plane_masters["[FLOOR_PLANE]"], M.hud_used.plane_masters["[GAME_PLANE]"], M.hud_used.plane_masters["[LIGHTING_PLANE]"])
+			var/atom/movable/plane_master_controller/pm_controller = M.hud_used.plane_master_controllers[PLANE_MASTERS_GAME]
 			var/rotation = min(round(current_cycle/20), 89) // By this point the player is probably puking and quitting anyway
-			for(var/whole_screen in screens)
-				animate(whole_screen, transform = matrix(rotation, MATRIX_ROTATE), time = 5, easing = QUAD_EASING, loop = -1)
+			for(var/key in pm_controller.controlled_planes)
+				animate(pm_controller.controlled_planes[key], transform = matrix(rotation, MATRIX_ROTATE), time = 5, easing = QUAD_EASING, loop = -1)
 				animate(transform = matrix(-rotation, MATRIX_ROTATE), time = 5, easing = QUAD_EASING)
 	return ..()
 
 /datum/reagent/toxin/rotatium/on_mob_end_metabolize(mob/living/M)
-	if(M && M.hud_used)
-		var/list/screens = list(M.hud_used.plane_masters["[FLOOR_PLANE]"], M.hud_used.plane_masters["[GAME_PLANE]"], M.hud_used.plane_masters["[LIGHTING_PLANE]"])
-		for(var/whole_screen in screens)
-			animate(whole_screen, transform = matrix(), time = 5, easing = QUAD_EASING)
-	..()
-
-/datum/reagent/toxin/skewium
-	name = "Skewium"
-	description = "A strange, dull coloured liquid that appears to warp back and forth inside its container. Causes any consumer to experience a visual phenomena similar to said warping."
-	silent_toxin = TRUE
-	reagent_state = LIQUID
-	color = "#ADBDCD"
-	metabolization_rate = 0.8 * REAGENTS_METABOLISM
-	toxpwr = 0.25
-	taste_description = "skewing"
-	process_flags = ORGANIC | SYNTHETIC
-
-/datum/reagent/toxin/skewium/on_mob_life(mob/living/carbon/M)
-	if(M.hud_used)
-		if(current_cycle >= 5 && current_cycle % 3 == 0)
-			var/list/screens = list(M.hud_used.plane_masters["[FLOOR_PLANE]"], M.hud_used.plane_masters["[GAME_PLANE]"], M.hud_used.plane_masters["[LIGHTING_PLANE]"])
-			var/matrix/skew = matrix()
-			var/intensity = 8
-			skew.set_skew(rand(-intensity,intensity), rand(-intensity,intensity))
-			var/matrix/newmatrix = skew
-
-			if(prob(33)) // 1/3rd of the time, let's make it stack with the previous matrix! Mwhahahaha!
-				var/obj/screen/plane_master/PM = M.hud_used.plane_masters["[GAME_PLANE]"]
-				newmatrix = skew * PM.transform
-
-			for(var/whole_screen in screens)
-				animate(whole_screen, transform = newmatrix, time = 5, easing = QUAD_EASING, loop = -1)
-				animate(transform = -newmatrix, time = 5, easing = QUAD_EASING)
-	return ..()
-
-/datum/reagent/toxin/skewium/on_mob_end_metabolize(mob/living/M)
 	if(M?.hud_used)
-		var/list/screens = list(M.hud_used.plane_masters["[FLOOR_PLANE]"], M.hud_used.plane_masters["[GAME_PLANE]"], M.hud_used.plane_masters["[LIGHTING_PLANE]"])
-		for(var/whole_screen in screens)
-			animate(whole_screen, transform = matrix(), time = 5, easing = QUAD_EASING)
+		var/atom/movable/plane_master_controller/pm_controller = M.hud_used.plane_master_controllers[PLANE_MASTERS_GAME]
+		for(var/key in pm_controller.controlled_planes)
+			animate(pm_controller.controlled_planes[key], transform = matrix(), time = 5, easing = QUAD_EASING)
 	..()
-
 
 /datum/reagent/toxin/anacea
 	name = "Anacea"
 	description = "A toxin that quickly purges medicines and metabolizes very slowly."
 	reagent_state = LIQUID
 	color = "#3C5133"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.08 * REAGENTS_METABOLISM
 	toxpwr = 0.15
 
@@ -772,9 +795,10 @@
 
 
 /datum/reagent/toxin/acid
-	name = "Sulphuric acid"
+	name = "Sulphuric Acid"
 	description = "A strong mineral acid with the molecular formula H2SO4."
 	color = "#00FF32"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 1
 	var/acidpwr = 10 //the amount of protection removed from the armour
 	taste_description = "acid"
@@ -809,6 +833,7 @@
 	name = "Fluorosulfuric acid"
 	description = "Fluorosulfuric acid is an extremely corrosive chemical substance."
 	color = "#5050FF"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 2
 	acidpwr = 42.0
 
@@ -821,6 +846,7 @@
 	name = "Toxin Microcapsules"
 	description = "Causes heavy toxin damage after a brief time of inactivity."
 	reagent_state = LIQUID
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0 //stays in the system until active.
 	var/actual_metaboliztion_rate = REAGENTS_METABOLISM
 	toxpwr = 0
@@ -841,6 +867,7 @@
 	description = "A nonlethal neurotoxin that interferes with the victim's ability to gesture."
 	silent_toxin = TRUE
 	color = "#F0F8FF" // rgb: 240, 248, 255
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY | CHEMICAL_GOAL_BOTANIST_HARVEST
 	toxpwr = 0
 	taste_description = "stillness"
 
@@ -855,12 +882,13 @@
 	description = "A strange substance that looks a lot like water. Drinking it is oddly tempting. Oof ouch."
 	silent_toxin = TRUE //no point spamming them even more.
 	color = "#AAAAAA77" //RGBA: 170, 170, 170, 77
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	toxpwr = 0
 	taste_description = "bone hurting"
 	overdose_threshold = 50
 
 /datum/reagent/toxin/bonehurtingjuice/on_mob_metabolize(mob/living/carbon/M)
-	M.say("oof ouch my bones", forced = /datum/reagent/toxin/bonehurtingjuice)
+	M.say("Oof ouch my bones!", forced = /datum/reagent/toxin/bonehurtingjuice)
 
 /datum/reagent/toxin/bonehurtingjuice/on_mob_life(mob/living/carbon/M)
 	M.adjustStaminaLoss(7.5, 0)
@@ -892,7 +920,7 @@
 		if(M.dna.species.type != /datum/species/skeleton && M.dna.species.type != /datum/species/plasmaman) //We're so sorry skeletons, you're so misunderstood
 			if(bp)
 				bp.receive_damage(0, 0, 200)
-				playsound(M, get_sfx("desceration"), 50, TRUE, -1)
+				playsound(M, get_sfx("desecration"), 50, TRUE, -1)
 				M.visible_message("<span class='warning'>[M]'s bones hurt too much!!</span>", "<span class='danger'>Your bones hurt too much!!</span>")
 				M.say("OOF!!", forced = /datum/reagent/toxin/bonehurtingjuice)
 			else //SUCH A LUST FOR REVENGE!!!
@@ -900,7 +928,7 @@
 				M.say("Why are we still here, just to suffer?", forced = /datum/reagent/toxin/bonehurtingjuice)
 		else //you just want to socialize
 			if(bp)
-				playsound(M, get_sfx("desceration"), 50, TRUE, -1)
+				playsound(M, get_sfx("desecration"), 50, TRUE, -1)
 				M.visible_message("<span class='warning'>[M] rattles loudly and flails around!!</span>", "<span class='danger'>Your bones hurt so much that your missing muscles spasm!!</span>")
 				M.say("OOF!!", forced=/datum/reagent/toxin/bonehurtingjuice)
 				bp.receive_damage(200, 0, 0) //But I don't think we should
@@ -914,6 +942,7 @@
 	description = "A horrible cardiotoxin that protects the humble bungo pit."
 	silent_toxin = TRUE
 	color = "#EBFF8E"
+	chem_flags = CHEMICAL_RNG_GENERAL | CHEMICAL_RNG_FUN | CHEMICAL_RNG_BOTANY
 	metabolization_rate = 0.5 * REAGENTS_METABOLISM
 	toxpwr = 0
 	taste_description = "tannin"
@@ -925,4 +954,21 @@
 		var/tox_message = pick("You feel your heart spasm in your chest.", "You feel faint.","You feel you need to catch your breath.","You feel a prickle of pain in your chest.")
 		to_chat(M, "<span class='notice'>[tox_message]</span>")
 	. = 1
+	..()
+
+//This reagent is intentionally not designed to give much fighting chance. Its only ever used when morph manages to trick somebody into interacting with its disguised form
+/datum/reagent/toxin/morphvenom
+	name = "Morph venom"
+	description = "Deadly venom of shapeshifting creature."
+	color = "#3cff00"
+	chem_flags = CHEMICAL_NOT_SYNTH | CHEMICAL_RNG_FUN
+	toxpwr = 2
+	taste_description = "salt"
+	metabolization_rate = 0.5 * REAGENTS_METABOLISM
+
+/datum/reagent/toxin/morphvenom/on_mob_life(mob/living/carbon/M)
+	M.set_drugginess(5)
+	M.adjustStaminaLoss(30)
+	M.silent = max(M.silent, 3)
+	M.confused = max(M.confused, 3)
 	..()

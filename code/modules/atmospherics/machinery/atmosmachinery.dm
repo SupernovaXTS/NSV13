@@ -37,6 +37,9 @@
 	var/construction_type
 	var/pipe_state //icon_state as a pipe item
 	var/on = FALSE
+	/// whether it can be painted
+	var/paintable = FALSE
+	var/interacts_with_air = FALSE
 
 /obj/machinery/atmospherics/examine(mob/user)
 	. = ..()
@@ -52,10 +55,13 @@
 		normalize_cardinal_directions()
 	nodes = new(device_type)
 	if (!armor)
-		armor = list("melee" = 25, "bullet" = 10, "laser" = 10, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 70)
+		armor = list("melee" = 25, "bullet" = 10, "laser" = 10, "energy" = 100, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 70, "stamina" = 0)
 	..()
 	if(process)
-		SSair.atmos_machinery += src
+		if(interacts_with_air)
+			SSair.atmos_air_machinery += src
+		else
+			SSair.atmos_machinery += src
 	SetInitDirections()
 
 /obj/machinery/atmospherics/Destroy()
@@ -63,6 +69,8 @@
 		nullifyNode(i)
 
 	SSair.atmos_machinery -= src
+	SSair.atmos_air_machinery -= src
+	SSair.pipenets_needing_rebuilt -= src
 
 	dropContents()
 	if(pipe_vision_img)
@@ -167,8 +175,9 @@
 	if(istype(reference, /obj/machinery/atmospherics/pipe))
 		var/obj/machinery/atmospherics/pipe/P = reference
 		P.destroy_network()
-	nodes[nodes.Find(reference)] = null
-	update_icon()
+	if(nodes.len >= nodes.Find(reference)) // for some reason things can still be acted on even though they've been deleted this is a really fucky way of detecting that
+		nodes[nodes.Find(reference)] = null
+		update_icon()
 
 /obj/machinery/atmospherics/attackby(obj/item/W, mob/user, params)
 	if(istype(W, /obj/item/pipe)) //lets you autodrop
@@ -212,11 +221,11 @@
 		if(unsafe_wrenching)
 			unsafe_pressure_release(user, internal_pressure)
 
-			
+
 			if (user.client)
-				SSmedals.UnlockMedal(MEDAL_UNWRENCH_HIGH_PRESSURE,user.client)
-			
-			
+				user.client.give_award(/datum/award/achievement/misc/pressure, user)
+
+
 		deconstruct(TRUE)
 	return TRUE
 
@@ -224,9 +233,14 @@
 	return can_unwrench
 
 // Throws the user when they unwrench a pipe with a major difference between the internal and environmental pressure.
-/obj/machinery/atmospherics/proc/unsafe_pressure_release(mob/user, pressures = null)
+/obj/machinery/atmospherics/proc/unsafe_pressure_release(mob/living/carbon/user, pressures = null)
 	if(!user)
 		return
+	if(ishuman(user)) //other carbons like monkeys can unwrench but cant wear magboots
+		if(istype(user.shoes, /obj/item/clothing/shoes/magboots))
+			var/obj/item/clothing/shoes/magboots/M = user.shoes
+			if(M.negates_gravity())
+				return
 	if(!pressures)
 		var/datum/gas_mixture/int_air = return_air()
 		var/datum/gas_mixture/env_air = loc.return_air()
@@ -250,7 +264,7 @@
 			transfer_fingerprints_to(stored)
 	..()
 
-/obj/machinery/atmospherics/proc/getpipeimage(iconset, iconstate, direction, col=rgb(255,255,255), piping_layer=2)
+/obj/machinery/atmospherics/proc/getpipeimage(iconset, iconstate, direction, col=rgb(255,255,255), piping_layer=3, trinary = FALSE)
 
 	//Add identifiers for the iconset
 	if(iconsetids[iconset] == null)
@@ -264,6 +278,8 @@
 		pipe_overlay = . = pipeimages[identifier] = image(iconset, iconstate, dir = direction)
 		pipe_overlay.color = col
 		PIPING_LAYER_SHIFT(pipe_overlay, piping_layer)
+		if(trinary && (piping_layer == 1 || piping_layer == 5))
+			PIPING_FORWARD_SHIFT(pipe_overlay, piping_layer, 2)
 
 /obj/machinery/atmospherics/on_construction(obj_color, set_layer)
 	if(can_unwrench)
@@ -279,9 +295,9 @@
 		A.addMember(src)
 	build_network()
 
-/obj/machinery/atmospherics/Entered(atom/movable/AM)
-	if(istype(AM, /mob/living))
-		var/mob/living/L = AM
+/obj/machinery/atmospherics/Entered(atom/movable/arrived, atom/old_loc, list/atom/old_locs)
+	if(istype(arrived, /mob/living))
+		var/mob/living/L = arrived
 		L.ventcrawl_layer = piping_layer
 	return ..()
 
@@ -322,10 +338,10 @@
 	//PLACEHOLDER COMMENT FOR ME TO READD THE 1 (?) DS DELAY THAT WAS IMPLEMENTED WITH A... TIMER?
 
 /obj/machinery/atmospherics/AltClick(mob/living/L)
+	. = ..()
 	if(istype(L) && is_type_in_list(src, GLOB.ventcrawl_machinery))
 		L.handle_ventcrawl(src)
 		return
-	..()
 
 
 /obj/machinery/atmospherics/proc/can_crawl_through()
@@ -343,3 +359,6 @@
 
 /obj/machinery/atmospherics/proc/update_layer()
 	layer = initial(layer) + (piping_layer - PIPING_LAYER_DEFAULT) * PIPING_LAYER_LCHANGE
+
+/obj/machinery/atmospherics/proc/paint(paint_color)
+	return FALSE

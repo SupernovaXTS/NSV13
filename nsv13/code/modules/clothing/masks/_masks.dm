@@ -5,10 +5,10 @@
 /obj/item/clothing/mask/breath
 	breathing_sound = TRUE
 
-/obj/item/clothing/mask/Initialize()
+/obj/item/clothing/mask/Initialize(mapload)
 	. = ..()
 	if(breathing_sound)
-		soundloop = new(list(src), FALSE)
+		soundloop = new(src)
 
 /obj/item/clothing/mask/gas
 	breathing_sound = TRUE
@@ -39,7 +39,7 @@
 	if(M.stat == DEAD)
 		soundloop?.stop()
 		return
-	if(slot == SLOT_WEAR_MASK)
+	if(slot == ITEM_SLOT_MASK)
 		soundloop?.start()
 	else
 		soundloop?.stop()

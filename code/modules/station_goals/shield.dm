@@ -6,20 +6,11 @@
 	var/coverage_goal = 500
 
 /datum/station_goal/station_shield/get_report()
-	return {"The station is located in a zone full of space debris.
+	return {"The ship is located in a zone full of space debris.
 			 We have a prototype shielding system you must deploy to reduce collision-related accidents.
 
 			 You can order the satellites and control systems at cargo.
-			 "}
-
-
-/datum/station_goal/station_shield/on_report()
-	//Unlock
-	var/datum/supply_pack/P = SSshuttle.supply_packs[/datum/supply_pack/engineering/shield_sat]
-	P.special_enabled = TRUE
-
-	P = SSshuttle.supply_packs[/datum/supply_pack/engineering/shield_sat_control]
-	P.special_enabled = TRUE
+			 "} //NSV13
 
 /datum/station_goal/station_shield/check_completion()
 	if(..())
@@ -40,16 +31,21 @@
 	name = "satellite control"
 	desc = "Used to control the satellite network."
 	circuit = /obj/item/circuitboard/computer/sat_control
-	ui_x = 400
-	ui_y = 305
+
+
 
 	var/notice
 
-/obj/machinery/computer/sat_control/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
-	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+
+/obj/machinery/computer/sat_control/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/computer/sat_control/ui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, ui_key, "SatelliteControl", name, ui_x, ui_y, master_ui, state)
+		ui = new(user, src, "SatelliteControl")
 		ui.open()
+		ui.set_autoupdate(TRUE) // Satellite stats (could probably be refactored to update when satellite status changes)
 
 /obj/machinery/computer/sat_control/ui_act(action, params)
 	if(..())
@@ -61,7 +57,7 @@
 
 /obj/machinery/computer/sat_control/proc/toggle(id)
 	for(var/obj/machinery/satellite/S in GLOB.machines)
-		if(S.id == id && S.z == z)
+		if(S.id == id && S.get_virtual_z_level() == get_virtual_z_level())
 			S.toggle()
 
 /obj/machinery/computer/sat_control/ui_data()
@@ -98,7 +94,7 @@
 	var/static/gid = 0
 	var/id = 0
 
-/obj/machinery/satellite/Initialize()
+/obj/machinery/satellite/Initialize(mapload)
 	. = ..()
 	id = gid++
 
@@ -114,9 +110,11 @@
 		to_chat(user, "<span class='notice'>You [active ? "deactivate": "activate"] [src].</span>")
 	active = !active
 	if(active)
+		begin_processing()
 		animate(src, pixel_y = 2, time = 10, loop = -1)
 		anchored = TRUE
 	else
+		end_processing()
 		animate(src, pixel_y = 0, time = 10)
 		anchored = FALSE
 	update_icon()
@@ -132,7 +130,8 @@
 	name = "\improper Meteor Shield Satellite"
 	desc = "A meteor point-defense satellite."
 	mode = "M-SHIELD"
-	speed_process = TRUE
+	processing_flags = START_PROCESSING_MANUALLY
+	subsystem_type = /datum/controller/subsystem/processing/fastprocess
 	var/kill_range = 14
 
 /obj/machinery/satellite/meteor_shield/proc/space_los(meteor)
@@ -145,7 +144,7 @@
 	if(!active)
 		return
 	for(var/obj/effect/meteor/M in GLOB.meteor_list)
-		if(M.z != z)
+		if(M.get_virtual_z_level() != get_virtual_z_level())
 			continue
 		if(get_dist(M,src) > kill_range)
 			continue

@@ -1,3 +1,5 @@
+// NSV13
+
 import { Fragment } from 'inferno';
 import { useBackend, useLocalState } from '../backend';
 import { Box, Button, Section, ProgressBar, Knob } from '../components';
@@ -6,10 +8,14 @@ import { Window } from '../layouts';
 export const FTLComputer = (props, context) => {
   const { act, data } = useBackend(context);
   return (
-    <Window resizable theme="retro">
+    <Window
+      resizable
+      theme="retro"
+      width={560}
+      height={350}>
       <Window.Content scrollable>
         <Section>
-          <Section 
+          <Section
             title="Actions:">
             <Knob
               size={2}

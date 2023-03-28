@@ -14,7 +14,7 @@
 
 /obj/item/choice_beacon
 	name = "choice beacon"
-	desc = "Hey, why are you viewing this?!! Please let Centcom know about this odd occurance."
+	desc = "Hey, why are you viewing this?!! Please let CentCom know about this odd occurrence."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "gangtool-blue"
 	item_state = "radio"
@@ -61,7 +61,7 @@
 			msg = "You hear something crackle in your ears for a moment before a voice speaks.  \"Please stand by for a message from Central Command.  Message as follows: <span class='bold'>Item request received. Your package is inbound, please stand back from the landing site.</span> Message ends.\""
 	to_chat(M, msg)
 
-	new /obj/effect/DPtarget(get_turf(src), pod)
+	new /obj/effect/pod_landingzone(get_turf(src), pod)
 
 /obj/item/choice_beacon/hero
 	name = "heroic beacon"
@@ -76,7 +76,6 @@
 			var/atom/A = V
 			hero_item_list[initial(A.name)] = A
 	return hero_item_list
-
 
 /obj/item/storage/box/hero
 	name = "Courageous Tomb Raider - 1940's."
@@ -111,13 +110,30 @@
 
 /obj/item/storage/box/hero/ghostbuster/PopulateContents()
 	new /obj/item/clothing/glasses/welding/ghostbuster(src)
-	new /obj/item/storage/belt/fannypack/bustin(src)	
+	new /obj/item/storage/belt/fannypack/bustin(src)
 	new /obj/item/clothing/gloves/color/black(src)
 	new /obj/item/clothing/shoes/jackboots(src)
 	new /obj/item/clothing/under/color/khaki/buster(src)
 	new /obj/item/grenade/chem_grenade/ghostbuster(src)
 	new /obj/item/grenade/chem_grenade/ghostbuster(src)
 	new /obj/item/grenade/chem_grenade/ghostbuster(src)
+
+/obj/item/storage/box/hero/carphunter
+	name = "Carp Hunter, Wildlife Expert - 2506."
+
+/obj/item/storage/box/hero/carphunter/PopulateContents()
+	new /obj/item/clothing/suit/space/hardsuit/carp/old(src)
+	new /obj/item/clothing/mask/gas/carp(src)
+	new /obj/item/kitchen/knife/hunting(src)
+
+/obj/item/storage/box/hero/ronin
+    name = "Sword Saint, Wandering Vagabond - 1600's."
+
+/obj/item/storage/box/hero/ronin/PopulateContents()
+    new /obj/item/clothing/under/costume/kamishimo(src)
+    new /obj/item/clothing/head/rice_hat(src)
+    new /obj/item/katana/weak/curator(src)
+    new /obj/item/clothing/shoes/sandal(src)
 
 /obj/item/choice_beacon/augments
 	name = "augment beacon"
@@ -193,31 +209,31 @@
 			maximum_size = 4
 			to_chat(user, "<span_class='notice'>You upgrade the [src] with the [wand].</span>")
 			playsound(user, 'sound/weapons/emitter2.ogg', 25, 1, -1)
-	
+
 /obj/item/clothing/head/that/bluespace/afterattack(atom/target, mob/user, proximity_flag, click_parameters)
 	. = ..()
 	if(!proximity_flag)
 		return
 	if(isliving(target))
-		var/mob/living/M = target
-		var/kidnaptime = max(10, (M.health * (M.mob_size / 2)))
+		var/mob/living/kidnapee = target
+		var/kidnaptime = max(1 SECONDS, (kidnapee.health * (kidnapee.mob_size / 2)))
 		if(iscarbon(target))
-			kidnaptime += 100
+			kidnaptime += 10 SECONDS
 		if(target == user)
-			kidnaptime = 10
-		M.visible_message("<span class='warning'>[user] starts pulling [src] over [M]'s head!</span>", "<span class='userdanger'>[user] starts pulling [src] over your head!</span>")
-		if(do_after_mob(user, M, kidnaptime * kidnappingcoefficient))
-			if(M == user)
-				M.drop_all_held_items()
+			kidnaptime = 1 SECONDS
+		kidnapee.visible_message("<span class='warning'>[user] starts pulling [src] over [kidnapee]'s head!</span>", "<span class='userdanger'>[user] starts pulling [src] over your head!</span>")
+		if(do_mob(user, kidnapee, kidnaptime * kidnappingcoefficient))
+			if(kidnapee == user)
+				kidnapee.drop_all_held_items()
 				if(HAS_TRAIT(src, TRAIT_NODROP))
 					return
-			if(M.mob_size <= capacity)
-				src.contents += M
-				capacity -= M.mob_size
-				user.visible_message("<span class='warning'>[user] stuffs [M] into the [src]!</span>")
-				to_chat(M, "<span class='userdanger'>[user] stuffs you into the [src]!</span>")
+			if(kidnapee.mob_size <= capacity)
+				src.contents += kidnapee
+				capacity -= kidnapee.mob_size
+				user.visible_message("<span class='warning'>[user] stuffs [kidnapee] into the [src]!</span>")
+				to_chat(kidnapee, "<span class='userdanger'>[user] stuffs you into the [src]!</span>")
 			else
-				to_chat(user, "[M] will not fit in the tophat!")
+				to_chat(user, "[kidnapee] will not fit in the tophat!")
 	else if (isitem(target))
 		var/obj/item/I = target
 		if(I in user.contents)
@@ -306,3 +322,86 @@
 	item_state = "wand"
 	w_class = WEIGHT_CLASS_SMALL
 	var/used = FALSE
+
+/obj/item/choice_beacon/pet
+	name = "animal delivery beacon"
+	desc = "There are no faster ways, only more humane."
+	var/default_name = "Bacon"
+	var/mob_choice = /mob/living/simple_animal/pet/dog/corgi/exoticcorgi
+
+/obj/item/choice_beacon/pet/generate_options(mob/living/M)
+	var/input_name = stripped_input(M, "What would you like your new pet to be named?", "New Pet Name", default_name, MAX_NAME_LEN)
+	if(!input_name)
+		return
+	spawn_mob(M,input_name)
+	uses--
+	if(!uses)
+		qdel(src)
+	else
+		to_chat(M, "<span class='notice'>[uses] use[uses > 1 ? "s" : ""] remaining on the [src].</span>")
+
+/obj/item/choice_beacon/pet/proc/spawn_mob(mob/living/M,name)
+	var/obj/structure/closet/supplypod/bluespacepod/pod = new()
+	var/mob/your_pet = new mob_choice(pod)
+	pod.explosionSize = list(0,0,0,0)
+	your_pet.name = name
+	your_pet.real_name = name
+	var/msg = "<span class=danger>After making your selection, you notice a strange target on the ground. It might be best to step back!</span>"
+	if(ishuman(M))
+		var/mob/living/carbon/human/H = M
+		if(istype(H.ears, /obj/item/radio/headset))
+			msg = "You hear something crackle in your ears for a moment before a voice speaks.  \"Please stand by for a message from Central Command.  Message as follows: <span class='bold'>One pet delivery straight from Central Command. Stand clear!</span> Message ends.\""
+	to_chat(M, msg)
+	new /obj/effect/pod_landingzone(get_turf(src), pod)
+
+/obj/item/choice_beacon/pet/cat
+	name = "cat delivery beacon"
+	default_name = "Tom"
+	mob_choice = /mob/living/simple_animal/pet/cat
+
+/obj/item/choice_beacon/pet/mouse
+	name = "mouse delivery beacon"
+	default_name = "Jerry"
+	mob_choice = /mob/living/simple_animal/mouse
+
+/obj/item/choice_beacon/pet/corgi
+	name = "corgi delivery beacon"
+	default_name = "Tosha"
+	mob_choice = /mob/living/simple_animal/pet/dog/corgi
+
+/obj/item/choice_beacon/pet/hamster
+	name = "hamster delivery beacon"
+	default_name = "Doctor"
+	mob_choice = /mob/living/simple_animal/pet/hamster
+
+/obj/item/choice_beacon/pet/pug
+	name = "pug delivery beacon"
+	default_name = "Silvestro"
+	mob_choice = /mob/living/simple_animal/pet/dog/pug
+
+/obj/item/choice_beacon/pet/ems
+	name = "emotional support animal delivery beacon"
+	default_name = "Hugsie"
+	mob_choice = /mob/living/simple_animal/pet/cat/kitten
+
+/obj/item/choice_beacon/pet/pingu
+	name = "penguin delivery beacon"
+	default_name = "Pingu"
+	mob_choice = /mob/living/simple_animal/pet/penguin/baby
+
+/obj/item/choice_beacon/pet/clown
+	name = "living lube delivery beacon"
+	default_name = "Offensive"
+	mob_choice = /mob/living/simple_animal/hostile/retaliate/clown/lube
+
+/obj/item/choice_beacon/pet/goat
+	name = "goat delivery beacon"
+	default_name = "Billy"
+	mob_choice = /mob/living/simple_animal/hostile/retaliate/goat
+
+/obj/item/choice_beacon/janicart
+	name = "janicart delivery beacon"
+	desc = "Summons a pod containing one (1) pimpin ride."
+
+/obj/item/choice_beacon/janicart/generate_display_names()
+	return list("janitor cart" = /obj/vehicle/ridden/janicart/upgraded/keyless)

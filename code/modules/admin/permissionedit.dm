@@ -9,7 +9,9 @@
 /datum/admins/proc/edit_admin_permissions(action, target, operation, page)
 	if(!check_rights(R_PERMISSIONS))
 		return
-	var/list/output = list("<link rel='stylesheet' type='text/css' href='panels.css'><a href='?_src_=holder;[HrefToken()];editrightsbrowser=1'>\[Permissions\]</a>")
+	var/datum/asset/asset_cache_datum = get_asset_datum(/datum/asset/group/permissions)
+	asset_cache_datum.send(usr)
+	var/list/output = list("<link rel='stylesheet' type='text/css' href='[SSassets.transport.get_asset_url("panels.css")]'><a href='?_src_=holder;[HrefToken()];editrightsbrowser=1'>\[Permissions\]</a>")
 	if(action)
 		output += " | <a href='?_src_=holder;[HrefToken()];editrightsbrowserlog=1;editrightspage=0'>\[Log\]</a> | <a href='?_src_=holder;[HrefToken()];editrightsbrowsermanage=1'>\[Management\]</a><hr style='background:#000000; border:0; height:3px'>"
 	else
@@ -92,7 +94,7 @@
 		<head>
 		<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
 		<title>Permissions Panel</title>
-		<script type='text/javascript' src='search.js'></script>
+		<script type='text/javascript' src='[SSassets.transport.get_asset_url("search.js")]'></script>
 		</head>
 		<body onload='selectTextField();updateSearch();'>
 		<div id='main'><table id='searchable' cellspacing='0'>
@@ -137,8 +139,8 @@
 	if(IsAdminAdvancedProcCall())
 		to_chat(usr, "<span class='admin prefix'>Admin Edit blocked: Advanced ProcCall detected.</span>")
 		return
-	var/datum/asset/permissions_assets = get_asset_datum(/datum/asset/simple/permissions)
-	permissions_assets.send(src)
+	var/datum/asset/permissions_assets = get_asset_datum(/datum/asset/simple/namespaced/common)
+	permissions_assets.send(owner)
 	var/admin_key = href_list["key"]
 	var/admin_ckey = ckey(admin_key)
 	var/datum/admins/D = GLOB.admin_datums[admin_ckey]
@@ -205,6 +207,10 @@
 	edit_admin_permissions()
 
 /datum/admins/proc/add_admin(admin_ckey, admin_key, use_db)
+	if(!check_rights(R_PERMISSIONS))
+		message_admins("[key_name_admin(usr)] attempted to add an admin without sufficient rights.")
+		log_admin("[key_name(usr)] attempted to add an admin without sufficient rights.")
+		return
 	if(admin_ckey)
 		. = admin_ckey
 	else
@@ -247,6 +253,10 @@
 		qdel(query_add_admin_log)
 
 /datum/admins/proc/remove_admin(admin_ckey, admin_key, use_db, datum/admins/D)
+	if(!check_rights(R_PERMISSIONS))
+		message_admins("[key_name_admin(usr)] attempted to remove an admin without sufficient rights.")
+		log_admin("[key_name(usr)] attempted to remove an admin without sufficient rights.")
+		return
 	if(alert("Are you sure you want to remove [admin_ckey]?","Confirm Removal","Do it","Cancel") == "Do it")
 		GLOB.admin_datums -= admin_ckey
 		GLOB.deadmins -= admin_ckey
@@ -298,6 +308,10 @@
 	return TRUE
 
 /datum/admins/proc/change_admin_rank(admin_ckey, admin_key, use_db, datum/admins/D, legacy_only)
+	if(!check_rights(R_PERMISSIONS))
+		message_admins("[key_name_admin(usr)] attempted to change an admin's rank without sufficient rights.")
+		log_admin("[key_name(usr)] attempted to change an admin's rank without sufficient rights.")
+		return
 	var/datum/admin_rank/R
 	var/list/rank_names = list()
 	if(!use_db || (use_db && !legacy_only))
@@ -389,6 +403,10 @@
 	log_admin(m2)
 
 /datum/admins/proc/change_admin_flags(admin_ckey, admin_key, use_db, datum/admins/D, legacy_only)
+	if(!check_rights(R_PERMISSIONS))
+		message_admins("[key_name_admin(usr)] attempted to edit admin flags without sufficient rights.")
+		log_admin("[key_name(usr)] attempted to edit admin flags without sufficient rights.")
+		return
 	var/new_flags = input_bitfield(usr, "Include permission flags<br>[use_db ? "This will affect ALL admins with this rank." : "This will affect only the current admin [admin_key]"]", "admin_flags", D.rank.include_rights, 350, 590, allowed_edit_list = usr.client.holder.rank.can_edit_rights)
 	if(isnull(new_flags))
 		return
@@ -400,7 +418,7 @@
 		return
 	var/m1 = "[key_name_admin(usr)] edited the permissions of [use_db ? " rank [D.rank.name] permanently" : "[admin_key] temporarily"]"
 	var/m2 = "[key_name(usr)] edited the permissions of [use_db ? " rank [D.rank.name] permanently" : "[admin_key] temporarily"]"
-	if(use_db || legacy_only)
+	if(use_db && !legacy_only)
 		var/rank_name = D.rank.name
 		var/old_flags
 		var/old_exclude_flags
@@ -468,6 +486,10 @@
 	log_admin(m2)
 
 /datum/admins/proc/remove_rank(admin_rank)
+	if(!check_rights(R_PERMISSIONS))
+		message_admins("[key_name_admin(usr)] attempted to remove an admin's rank without sufficient rights.")
+		log_admin("[key_name(usr)] attempted to remove an admin's rank without sufficient rights.")
+		return
 	if(!admin_rank)
 		return
 	for(var/datum/admin_rank/R in GLOB.admin_ranks)

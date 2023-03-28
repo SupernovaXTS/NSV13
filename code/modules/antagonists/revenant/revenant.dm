@@ -4,7 +4,6 @@
 //Admin-spawn or random event
 
 #define INVISIBILITY_REVENANT 50
-#define REVENANT_NAME_FILE "revenant_names.json"
 
 /mob/living/simple_animal/revenant
 	name = "revenant"
@@ -37,7 +36,6 @@
 	atmos_requirements = list("min_oxy" = 0, "max_oxy" = 0, "min_tox" = 0, "max_tox" = 0, "min_co2" = 0, "max_co2" = 0, "min_n2" = 0, "max_n2" = 0)
 	minbodytemp = 0
 	maxbodytemp = INFINITY
-	harm_intent_damage = 0
 	friendly = "touches"
 	status_flags = 0
 	wander = FALSE
@@ -50,6 +48,8 @@
 	unique_name = TRUE
 	hud_possible = list(ANTAG_HUD)
 	hud_type = /datum/hud/revenant
+
+	mobchatspan = "revenminor"
 
 	var/essence = 75 //The resource, and health, of revenants.
 	var/essence_regen_cap = 75 //The regeneration cap of essence (go figure); regenerates every Life() tick up to this amount.
@@ -66,16 +66,26 @@
 	var/list/drained_mobs = list() //Cannot harvest the same mob twice
 	var/perfectsouls = 0 //How many perfect, regen-cap increasing souls the revenant has. //TODO, add objective for getting a perfect soul(s?)
 	var/generated_objectives_and_spells = FALSE
+	discovery_points = 4000
 
 /mob/living/simple_animal/revenant/Initialize(mapload)
 	. = ..()
 	AddSpell(new /obj/effect/proc_holder/spell/targeted/night_vision/revenant(null))
+	AddSpell(new /obj/effect/proc_holder/spell/self/revenant_phase_shift(null))
 	AddSpell(new /obj/effect/proc_holder/spell/targeted/telepathy/revenant(null))
 	AddSpell(new /obj/effect/proc_holder/spell/aoe_turf/revenant/defile(null))
 	AddSpell(new /obj/effect/proc_holder/spell/aoe_turf/revenant/overload(null))
 	AddSpell(new /obj/effect/proc_holder/spell/aoe_turf/revenant/blight(null))
 	AddSpell(new /obj/effect/proc_holder/spell/aoe_turf/revenant/malfunction(null))
 	random_revenant_name()
+	AddComponent(/datum/component/tracking_beacon, "ghost", null, null, TRUE, "#9e4d91", TRUE, TRUE)
+
+/mob/living/simple_animal/revenant/Destroy()
+	. = ..()
+
+	var/datum/component/tracking_beacon/beacon = GetComponent(/datum/component/tracking_beacon)
+	if(beacon)
+		qdel(beacon)
 
 /mob/living/simple_animal/revenant/canUseTopic(atom/movable/M, be_close=FALSE, no_dextery=FALSE, no_tk=FALSE)
 	return FALSE
@@ -127,13 +137,13 @@
 	update_health_hud()
 	..()
 
-/mob/living/simple_animal/revenant/Stat()
-	..()
-	if(statpanel("Status"))
-		stat(null, "Current essence: [essence]/[essence_regen_cap]E")
-		stat(null, "Stolen essence: [essence_accumulated]E")
-		stat(null, "Unused stolen essence: [essence_excess]E")
-		stat(null, "Stolen perfect souls: [perfectsouls]")
+/mob/living/simple_animal/revenant/get_stat_tab_status()
+	var/list/tab_data = ..()
+	tab_data["Current essence"] = GENERATE_STAT_TEXT("[essence]/[essence_regen_cap]E")
+	tab_data["Stolen essence"] = GENERATE_STAT_TEXT("[essence_accumulated]E")
+	tab_data["Unused stolen essence"] = GENERATE_STAT_TEXT("[essence_excess]E")
+	tab_data["Stolen perfect souls"] = GENERATE_STAT_TEXT("[perfectsouls]")
+	return tab_data
 
 /mob/living/simple_animal/revenant/update_health_hud()
 	if(hud_used)
@@ -142,7 +152,7 @@
 			essencecolor = "#9A5ACB" //oh boy you've got a lot of essence
 		else if(!essence)
 			essencecolor = "#1D2953" //oh jeez you're dying
-		hud_used.healths.maptext = "<div align='center' valign='middle' style='position:relative; top:0px; left:6px'><font color='[essencecolor]'>[essence]E</font></div>"
+		hud_used.healths.maptext = MAPTEXT("<div align='center' valign='middle' style='position:relative; top:0px; left:6px'><font color='[essencecolor]'>[essence]E</font></div>")
 
 /mob/living/simple_animal/revenant/med_hud_set_health()
 	return //we use no hud
@@ -153,6 +163,10 @@
 /mob/living/simple_animal/revenant/say(message, bubble_type, var/list/spans = list(), sanitize = TRUE, datum/language/language = null, ignore_spam = FALSE, forced = null)
 	if(!message)
 		return
+	if(CHAT_FILTER_CHECK(message))
+		to_chat(usr, "<span class='warning'>Your message contains forbidden words.</span>")
+		return
+	message = treat_message_min(message)
 	src.log_talk(message, LOG_SAY)
 	var/rendered = "<span class='revennotice'><b>[src]</b> says, \"[message]\"</span>"
 	for(var/mob/M in GLOB.mob_list)
@@ -182,6 +196,9 @@
 	if(!revealed || stasis)
 		return BULLET_ACT_FORCE_PIERCE
 	return ..()
+
+/mob/living/simple_animal/revenant/rad_act(amount)
+	return
 
 //damage, gibbing, and dying
 /mob/living/simple_animal/revenant/attackby(obj/item/W, mob/living/user, params)
@@ -236,10 +253,28 @@
 	R.revenant = src
 	invisibility = INVISIBILITY_ABSTRACT
 	revealed = FALSE
-	ghostize(0)//Don't re-enter invisible corpse
+	ghostize(FALSE)//Don't re-enter invisible corpse
 
 
 //reveal, stun, icon updates, cast checks, and essence changing
+/mob/living/simple_animal/revenant/proc/phase_shift()
+	if(unreveal_time) //An ability has forced the revenant to be vulnerable and this should not override that
+		to_chat(src, "<span class='revenwarning'>You cannot become incorporeal yet!</span>")
+		return FALSE
+
+	else if(revealed) //Okay, the revenant wasn't forced to be revealed, are they currently vulnerable
+		revealed = FALSE
+		incorporeal_move = INCORPOREAL_MOVE_JAUNT
+		invisibility = INVISIBILITY_REVENANT
+
+
+	else //Revenant isn't revealed, whether by force or their own will, so this means they are currently invisible
+		revealed = TRUE
+		incorporeal_move = FALSE
+		invisibility = 0
+	update_spooky_icon()
+	return TRUE
+
 /mob/living/simple_animal/revenant/proc/reveal(time)
 	if(!src)
 		return
@@ -352,7 +387,7 @@
 	var/old_key //key of the previous revenant, will have first pick on reform.
 	var/mob/living/simple_animal/revenant/revenant
 
-/obj/item/ectoplasm/revenant/Initialize()
+/obj/item/ectoplasm/revenant/Initialize(mapload)
 	. = ..()
 	addtimer(CALLBACK(src, .proc/try_reform), 600)
 
@@ -451,13 +486,13 @@
 
 /datum/objective/revenant/check_completion()
 	if(!isrevenant(owner.current))
-		return FALSE
+		return ..()
 	var/mob/living/simple_animal/revenant/R = owner.current
 	if(!R || R.stat == DEAD)
-		return FALSE
+		return ..()
 	var/essence_stolen = R.essence_accumulated
 	if(essence_stolen < targetAmount)
-		return FALSE
+		return ..()
 	return TRUE
 
 /datum/objective/revenantFluff

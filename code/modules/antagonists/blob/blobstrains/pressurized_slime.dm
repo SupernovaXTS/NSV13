@@ -23,7 +23,7 @@
 		extinguisharea(B, 50)
 
 /datum/blobstrain/reagent/pressurized_slime/proc/extinguisharea(obj/structure/blob/B, probchance)
-	for(var/turf/open/T in range(1, B))
+	for(var/turf/open/T in RANGE_TURFS(1, B))
 		if(prob(probchance))
 			T.MakeSlippery(TURF_WET_LUBE, min_wet_time = 10 SECONDS, wet_time_to_add = 5 SECONDS)
 			for(var/obj/O in T)
@@ -36,6 +36,7 @@
 	name = "Pressurized Slime"
 	taste_description = "a sponge"
 	color = "#AAAABB"
+	chem_flags = CHEMICAL_NOT_SYNTH | CHEMICAL_RNG_FUN
 
 /datum/reagent/blob/pressurized_slime/reaction_mob(mob/living/M, method=TOUCH, reac_volume, show_message, touch_protection, mob/camera/blob/O)
 	reac_volume = ..()

@@ -8,7 +8,7 @@
 	icon = 'icons/turf/shuttle.dmi'
 	resistance_flags = LAVA_PROOF | FIRE_PROOF | ACID_PROOF
 	max_integrity = 500
-	armor = list("melee" = 100, "bullet" = 10, "laser" = 10, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 70) //default + ignores melee
+	armor = list("melee" = 100, "bullet" = 10, "laser" = 10, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 70, "stamina" = 0) //default + ignores melee
 
 /obj/structure/shuttle/engine
 	name = "engine"
@@ -17,6 +17,11 @@
 	anchored = TRUE
 	var/engine_power = 1
 	var/state = ENGINE_WELDED //welding shmelding
+
+/obj/structure/shuttle/engine/Initialize(mapload)
+	. = ..()
+	if(anchored && state == ENGINE_UNWRENCHED)
+		state = ENGINE_WRENCHED
 
 //Ugh this is a lot of copypasta from emitters, welding need some boilerplate reduction
 /obj/structure/shuttle/engine/can_be_unfasten_wrench(mob/user, silent)

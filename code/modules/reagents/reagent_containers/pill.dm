@@ -15,7 +15,7 @@
 	var/self_delay = 0 //pills are instant, this is because patches inheret their aplication from pills
 	var/dissolvable = TRUE
 
-/obj/item/reagent_containers/pill/Initialize()
+/obj/item/reagent_containers/pill/Initialize(mapload)
 	. = ..()
 	if(!icon_state)
 		icon_state = "pill[rand(1,20)]"
@@ -27,7 +27,7 @@
 	return
 
 
-/obj/item/reagent_containers/pill/attack(mob/M, mob/user, def_zone)
+/obj/item/reagent_containers/pill/attack(mob/M, mob/user, obj/item/bodypart/affecting)
 	if(!canconsume(M, user))
 		return FALSE
 	if(iscarbon(M))
@@ -51,11 +51,10 @@
 
 	var/makes_me_think = pick(strings(REDPILL_FILE, "redpill_questions"))
 	if(icon_state == "pill4" && prob(5)) //you take the red pill - you stay in Wonderland, and I show you how deep the rabbit hole goes
-		sleep(50)
-		to_chat(M, "<span class='notice'>[makes_me_think]</span>")
+		addtimer(CALLBACK(GLOBAL_PROC, /proc/to_chat, M, "<span class='notice'>[makes_me_think]</span>"), 5 SECONDS)
 
 	if(reagents.total_volume)
-		reagents.reaction(M, apply_type)
+		reagents.reaction(M, apply_type, affecting = affecting)
 		reagents.trans_to(M, reagents.total_volume, transfered_by = user)
 	qdel(src)
 	return TRUE
@@ -68,11 +67,11 @@
 	if(!dissolvable || !target.is_refillable())
 		return
 	if(target.is_drainable() && !target.reagents.total_volume)
-		to_chat(user, "<span class='warning'>[target] is empty! There's nothing to dissolve [src] in.</span>")
+		balloon_alert(user, "[target] is empty!")
 		return
 
 	if(target.reagents.holder_full())
-		to_chat(user, "<span class='warning'>[target] is full.</span>")
+		balloon_alert(user, "[target] is full!")
 		return
 
 	user.visible_message("<span class='warning'>[user] slips something into [target]!</span>", "<span class='notice'>You dissolve [src] in [target].</span>", null, 2)
@@ -115,7 +114,7 @@
 	name = "salbutamol pill"
 	desc = "Used to treat oxygen deprivation."
 	icon_state = "pill16"
-	list_reagents = list(/datum/reagent/medicine/salbutamol = 30)
+	list_reagents = list(/datum/reagent/medicine/salbutamol = 20)
 	rename_with_volume = TRUE
 
 /obj/item/reagent_containers/pill/charcoal
@@ -139,6 +138,9 @@
 	list_reagents = list(/datum/reagent/medicine/mannitol = 50)
 	rename_with_volume = TRUE
 
+/obj/item/reagent_containers/pill/mannitol/braintumor //For the brain tumor quirk
+	list_reagents = list(/datum/reagent/medicine/mannitol = 30)
+
 /obj/item/reagent_containers/pill/mutadone
 	name = "mutadone pill"
 	desc = "Used to treat genetic damage."
@@ -146,18 +148,32 @@
 	list_reagents = list(/datum/reagent/medicine/mutadone = 50)
 	rename_with_volume = TRUE
 
+/obj/item/reagent_containers/pill/bicaridine
+	name = "bicaridine pill"
+	desc = "Used to stimulate the healing of small brute injuries."
+	icon_state = "pill9"
+	list_reagents = list(/datum/reagent/medicine/bicaridine = 15)
+	rename_with_volume = TRUE
+
+/obj/item/reagent_containers/pill/kelotane
+	name = "kelotane pill"
+	desc = "Used to stimulate the healing of small burns."
+	icon_state = "pill11"
+	list_reagents = list(/datum/reagent/medicine/kelotane = 15)
+	rename_with_volume = TRUE
+
 /obj/item/reagent_containers/pill/salicyclic
 	name = "salicylic acid pill"
 	desc = "Used to dull pain."
 	icon_state = "pill9"
-	list_reagents = list(/datum/reagent/medicine/sal_acid = 24)
+	list_reagents = list(/datum/reagent/medicine/sal_acid = 15)
 	rename_with_volume = TRUE
 
 /obj/item/reagent_containers/pill/oxandrolone
 	name = "oxandrolone pill"
 	desc = "Used to stimulate burn healing."
 	icon_state = "pill11"
-	list_reagents = list(/datum/reagent/medicine/oxandrolone = 24)
+	list_reagents = list(/datum/reagent/medicine/oxandrolone = 15)
 	rename_with_volume = TRUE
 
 /obj/item/reagent_containers/pill/insulin
@@ -205,7 +221,7 @@
 	desc = "Used to treat radition used to counter radiation poisoning."
 	icon_state = "pill18"
 	list_reagents = list(/datum/reagent/medicine/potass_iodide = 30)
-	
+
 
 ///////////////////////////////////////// this pill is used only in a legion mob drop
 /obj/item/reagent_containers/pill/shadowtoxin
@@ -213,7 +229,7 @@
 	desc = "I wouldn't eat this if I were you."
 	icon_state = "pill9"
 	color = "#454545"
-	list_reagents = list(/datum/reagent/mutationtoxin/shadow = 1)
+	list_reagents = list(/datum/reagent/mutationtoxin/shadow = 5)
 
 //////////////////////////////////////// drugs
 /obj/item/reagent_containers/pill/zoom
@@ -259,8 +275,8 @@
 	prevent_grinding = TRUE
 	dissolvable = FALSE
 
-/obj/item/reagent_containers/pill/floorpill/Initialize()
-	list_reagents = list(get_unrestricted_random_reagent_id() = rand(10,50))
+/obj/item/reagent_containers/pill/floorpill/Initialize(mapload)
+	list_reagents = list(get_random_reagent_id(CHEMICAL_RNG_FUN) = rand(10,50))
 	. = ..()
 	name = pick(names)
 
@@ -269,7 +285,3 @@
 	. = ..()
 	if(prob(20))
 		. += "[pick(descs)]"
-	if(HAS_TRAIT(user, TRAIT_APPRAISAL))
-		if(length(reagents.reagent_list))
-			for(var/datum/reagent/R in reagents.reagent_list)
-				. += "It contains [R.volume] units of [R.name]"
